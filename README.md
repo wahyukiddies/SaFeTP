@@ -8,11 +8,11 @@ Merupakan sebuah proyek yang berfokus pada pemanfaatan shell script sebagai medi
 
 Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan hasilnya work.
 
-## Technologies
+## Softwares
 
-- FTP Server: vsftpd
-- DNS Server: bind9
-- Web: Python Flask
+- FTP Server: **vsftpd**
+- DNS Server: **bind9**
+- Web: **Python Flask**
 
 ## Usage
 
@@ -40,19 +40,18 @@ sudo apt install -y dos2unix
 ### References
 
 - Konfigurasi DNS Server:
-  1. ![https://jurnal.netplg.com/index.php/jnca/article/view/61/37]
-  2. ![https://www.dcckotabumi.ac.id/ojs/index.php/jik/article/view/236/169]
+  1. [Jurnal 1 - JNCA](https://jurnal.netplg.com/index.php/jnca/article/view/61/37)
+  2. [Jurnal 2 - STMIK Dian Cipta Cendikia Kotabumi](https://www.dcckotabumi.ac.id/ojs/index.php/jik/article/view/236/169)
 
 - Konfigurasi FTP Server:
-  1. ![https://ijcoreit.org/index.php/coreit/article/view/300]
-  2. ![https://perpustakaan.poltektegal.ac.id/index.php/index.php?p=fstream-pdf&fid=18923&bid=12369]
+  1. [Jurnal 1 - STMIK IBBI](https://ijcoreit.org/index.php/coreit/article/view/300)
+  2. [Jurnal 2 - Poltek Tegal](https://perpustakaan.poltektegal.ac.id/index.php/index.php?p=fstream-pdf&fid=18923&bid=12369)
 
 - Konfigurasi SSL pada FTP Server:
-  1. ![https://ejournal.unesa.ac.id/index.php/jinacs/article/view/60908/46839]
-  2. ![https://journal.unhas.ac.id/index.php/juteks/article/view/5150/3325]
-  3. ![https://jurnal.goretanpena.com/index.php/JSSR/article/view/471/411]
+  1. [Jurnal 1 - UNESA](https://ejournal.unesa.ac.id/index.php/jinacs/article/view/60908/46839)
+  2. [Jurnal 2 - UNHAS](https://journal.unhas.ac.id/index.php/juteks/article/view/5150/3325)
+  3. [Jurnal 3 - GoretanPena](https://jurnal.goretanpena.com/index.php/JSSR/article/view/471/411)
 
 ### Articles
 
-- ![https://adindammb22.mb.student.pens.ac.id/UAS%20Praktikum%20Jaringan%20Komputer/FTP_Dinda.pdf]
-- ![https://www.liquidweb.com/blog/error-500-oops-vsftpd-refusing-to-run-with-writable-root-inside-chroot-solved/]
+- [https://adindammb22.mb.student.pens.ac.id/UAS%20Praktikum%20Jaringan%20Komputer/FTP_Dinda.pdf](https://adindammb22.mb.student.pens.ac.id/UAS%20Praktikum%20Jaringan%20Komputer/FTP_Dinda.pdf)
