@@ -10,10 +10,10 @@
 # 1. Muhammad Khairu Mufid / 2207421031                       |
 # 2. Kevin Alonzo Manuel Bakara / 2207421032                  |
 # 3. Wahyu Priambodo / 2207421048                             |
-# 4. Muhammad Brian Azura Nixon / 2207421056                  |
-# 5. Shaquille Arriza Hidayat / 2207421057                    |
-# 6. Cornelius Yuli Rosdianto / 2207421059                    |
-# 7. Rizki Alfarisi / 2207421053                              |
+# 4. Rizki Alfarisi / 2207421053                              |
+# 5. Muhammad Brian Azura Nixon / 2207421056                  |
+# 6. Shaquille Arriza Hidayat / 2207421057                    |
+# 7. Cornelius Yuli Rosdianto / 2207421059                    |
 # -------------------------------------------------------------
 # Versi: 1.0                                                  |
 # Tanggal: 14 Juli 2024                                       |
