@@ -18,8 +18,8 @@
 # Versi: 1.0                                                  |
 # Tanggal: 14 Juli 2024                                       |
 # -------------------------------------------------------------
-# Run program:                                                | 
-# 1. chmod a+x safetp.sh                                      | 
+# Run program:                                                |
+# 1. chmod a+x safetp.sh                                      |
 # 2. sudo bash safetp.sh -l userlist.txt [OPTIONS...]         |
 ###############################################################
 
@@ -45,7 +45,7 @@ v1.0 | Kelompok 4 - TMJ 4B
     -p, --port: Port untuk server FTP (default: 21),\n
     -ip, --ip-address: Alamat IP untuk DNS server,\n
     -d, --domain: Nama domain untuk DNS server,\n
-    -h, --help: Menampilkan opsi yang tersedia,\n"
+    -h, --help: Menampilkan opsi yang tersedia\n"
   echo "----------------------------------------------------"
 }
 
@@ -173,7 +173,7 @@ EOL
   sudo systemctl restart -q vsftpd.service
   sudo systemctl enable -q vsftpd.service
   sleep 1 # tunggu 1 detik.
-  
+
   # 7. Menampilkan notif jika konfigurasi FTP server selesai.
   echo "[OK] Konfigurasi FTP server selesai" | lolcat
   echo "[OK] FTP server dapat diakses melalui port: ${PORT:-21}" | lolcat
