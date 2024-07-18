@@ -12,13 +12,14 @@ check_root(){
 
 #check bind9 dnsutils
 check_install(){
+    #Install Bind dan konfigurasi default
     if [ $(dpkg-query -W -f='${Status}' bind9 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         echo "[-] Bind9 belum terinstall!"
         echo "[+] Install bind9..."
         sudo apt install bind9 bind9utils bind9-doc -y &> /dev/null
         sleep 5
     fi
-
+    
     if [ $(dpkg-query -W -f='${Status}' dnsutils 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         echo "[-] Dnsutils belum terinstall!"
         echo "[+] Install dnsutils..."
@@ -178,13 +179,20 @@ EOL
 }
 
 # Apabila bind terinstall namun terjadi kesalahan konfigurasi
-# Menghapus semua konfigurasi bind 
 reset_bind9(){
+    # Menghapus bind dan konfigurasi bind 
     echo "[+] Resetting bind9 configuration..."
     sudo apt remove --purge bind9 bind9utils bind9-doc -y &> /dev/null
     sudo rm -rf /etc/bind
     sudo rm -rf /var/cache/bind
     echo "[+] Bind9 and its configurations have been reset."
+
+    #jika terdapat teks "namseserver $ip" pada /etc/resolv.conf maka hapus baris tersebut
+    if [ $(grep -c "nameserver $ip" /etc/resolv.conf) -eq 1 ]; then
+        echo "[-] Menghapus IP saat ini pada file resolv.conf..."
+        sudo sed -i "/nameserver $ip/d" /etc/resolv.conf
+    fi
+    echo "[+] Operasi selesai..."
 }
 
 main(){
