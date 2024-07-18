@@ -8,6 +8,11 @@ Merupakan sebuah proyek yang berfokus pada pemanfaatan shell script sebagai medi
 
 Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan hasilnya work.
 
+
+## Important
+
+Nama user diinputkan secara manual ke dalam file **userlist.txt**
+
 ## Softwares
 
 - FTP Server: **vsftpd**
