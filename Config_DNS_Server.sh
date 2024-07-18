@@ -25,21 +25,16 @@ check_install(){
         echo "[+] Install dnsutils..."
         sudo apt install dnsutils -y &> /dev/null
     fi
-
 }
-
 
 
 #Config Forwarder dan Reverse
 config_for_rev(){
-# Yang Akan di Konfig
+# Yang Akan di Config
 # - db.forward
 # - db.reverse
 # - named.conf.options
 # - named.conf.local 
-
-    #check_ip saat ini 
-    ip=$(hostname -I | awk '{print $1}')
 
     #mendapatkan digit terakhir dari ip saat ini
     digit=$(echo $ip | awk -F. '{print $4}')
@@ -169,7 +164,7 @@ EOL
 
         echo "[+] Konfigurasi DNS Server telah selesai..."
         echo ""
-        echo "[+] Silahkan kunjungin >>> $domain <<<"
+        echo "[+] Domain diatur menjadi >>> $domain <<<"
 
     else
         echo "[-] Bind9 service gagal berjalan..."
@@ -181,23 +176,31 @@ EOL
 # Apabila bind terinstall namun terjadi kesalahan konfigurasi
 reset_bind9(){
     # Menghapus bind dan konfigurasi bind 
-    echo "[+] Resetting bind9 configuration..."
+    echo "[+] Menhapus bind dan konfigurasinya..."
     sudo apt remove --purge bind9 bind9utils bind9-doc -y &> /dev/null
     sudo rm -rf /etc/bind
     sudo rm -rf /var/cache/bind
-    echo "[+] Bind9 and its configurations have been reset."
+    echo "[+] Bind9 dan konfigurasinya telah dihapus..."
 
     #jika terdapat teks "namseserver $ip" pada /etc/resolv.conf maka hapus baris tersebut
     if [ $(grep -c "nameserver $ip" /etc/resolv.conf) -eq 1 ]; then
-        echo "[-] Menghapus IP saat ini pada file resolv.conf..."
+        echo "[-] Menghapus IP saat ini pada resolv.conf..."
         sudo sed -i "/nameserver $ip/d" /etc/resolv.conf
     fi
-    echo "[+] Operasi selesai..."
+    
+    #Mengecek apakah bind9 telah diuninstall
+    if [ $(dpkg-query -W -f='${Status}' bind9 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+        #apabila ip berhasil dihapus dari etc/resolv.conf
+        if [ $(grep -c "nameserver $ip" /etc/resolv.conf) -eq 0 ]; then
+            echo "[+] Operasi selesai..."
+        fi
+    fi
 }
 
 main(){
+    ip=$(hostname -I | awk '{print $1}')
     if [ "$1" == "--reset" ]; then
-        reset_bind9
+        reset_bind9 $IP
         exit 0
     fi
     check_root
@@ -208,4 +211,5 @@ main(){
     config_for_rev $domain
 }
 
+#Fungsi utama + menerima semua parameter
 main "$@"
