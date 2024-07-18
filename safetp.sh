@@ -29,8 +29,8 @@ initial_setup() {
   is_connected=$(ping -c 3 google.com &> /dev/null)
   if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
-    echo "[+] Update dan upgrade repositori sistem..."
-    (sudo apt update && sudo apt upgrade -y) &> /dev/null
+    echo "[+] Update repositori sistem..."
+    (sudo apt update) &> /dev/null
     echo "[+] Repositori sistem berhasil diperbarui"
   else
     echo "[-] Tidak ada koneksi internet!"
@@ -111,6 +111,7 @@ configure_ftp() {
 # CREATED AUTOMATICALLY BY SAFETP PROGRAM #
 ###########################################
 
+# Konfigurasi dasar FTP server.
 listen=YES
 listen_ipv6=NO
 listen_port=${PORT:-21}
@@ -122,6 +123,8 @@ xferlog_enable=YES
 log_ftp_protocol=YES
 dirmessage_enable=YES
 delete_failed_uploads=YES
+use_localtime=YES
+utf8_filesystem=YES
 
 # Konfigurasi chroot jail pada setiap user FTP yang diizinkan.
 chroot_list_enable=YES
