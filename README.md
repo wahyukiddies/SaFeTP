@@ -6,34 +6,41 @@ Merupakan sebuah proyek yang berfokus pada pemanfaatan shell script sebagai medi
 
 ## Testing Environment
 
-Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan hasilnya work.
-
-
-## Important
-
-Nama user diinputkan secara manual ke dalam file **userlist.txt**
+Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan **hasilnya work**.
 
 ## Softwares
 
 - FTP Server: **vsftpd**
 - DNS Server: **bind9**
-- Web: **Python Flask**
+- Web: **Python Flask + Bootstrap**
 
 ## Usage
 
+### Auto install
+
+> Jika ingin menggunakan opsi auto install, maka daftar nama user FTP harus diinputkan secara manual ke dalam file "**userlist.txt**".
+
 ```bash
-chmod a+x setup.sh && chmod a+x safetp.sh
-# Run setup.sh first
-sudo bash setup.sh
+sudo apt install -y curl && \
+curl -fsSL "https://raw.githubusercontent.com/wahyukiddies/SaFeTP/main/safetp.sh" | sudo tee -a $(pwd)/safetp.sh && \
+sudo bash safetp.sh -l userlist.txt
+```
+
+### Manual install
+
+```bash
+# Clone the repository first.
+git clone https://github.com/wahyukiddies/SaFeTP.git && chmod a+x safetp.sh
 
 # And then, run the safetp.sh script with 1 required parameters!
-sudo bash setup.sh -l userlist.txt
+# Change with your own userlist file!.
+sudo bash safetp.sh -l userlist-sample.txt
 
-# You can change the port by provide -p:
-sudo bash setup.sh -l userlist.txt -p 2121
+# You can change the port by provide -p.
+sudo bash safetp.sh -l userlist.txt -p 2121 # by default is 21.
 
 # And also you can change the directory name for each allowed users:
-sudo bash setup.sh -l userlist.txt -p 2121 -dir ftpdir # by default is "$HOME/ftp"
+sudo bash safetp.sh -l userlist.txt -p 2121 -dir ftpdir # by default is "$HOME/ftp".
 ```
 
 Jika terdapat error ketika mencoba menjalankan di environment Linux, cobalah untuk mengubahnya ke format UNIX/Linux menggunakan tool `dos2unix`:
@@ -42,7 +49,7 @@ Jika terdapat error ketika mencoba menjalankan di environment Linux, cobalah unt
 sudo apt install -y dos2unix
 ```
 
-### References
+## References
 
 - Konfigurasi DNS Server:
   1. [Jurnal 1 - JNCA](https://jurnal.netplg.com/index.php/jnca/article/view/61/37)
@@ -57,6 +64,6 @@ sudo apt install -y dos2unix
   2. [Jurnal 2 - UNHAS](https://journal.unhas.ac.id/index.php/juteks/article/view/5150/3325)
   3. [Jurnal 3 - GoretanPena](https://jurnal.goretanpena.com/index.php/JSSR/article/view/471/411)
 
-### Articles
+## Articles
 
 - [https://adindammb22.mb.student.pens.ac.id/UAS%20Praktikum%20Jaringan%20Komputer/FTP_Dinda.pdf](https://adindammb22.mb.student.pens.ac.id/UAS%20Praktikum%20Jaringan%20Komputer/FTP_Dinda.pdf)
