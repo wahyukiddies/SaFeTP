@@ -14,17 +14,20 @@ check_root(){
 check_install(){
     if [ $(dpkg-query -W -f='${Status}' bind9 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         echo "[-] Bind9 belum terinstall!"
-        echo "[-] Install bind9..."
-        sudo apt-get install bind9 -y
+        echo "[+] Install bind9..."
+        sudo apt install bind9 bind9utils bind9-doc -y &> /dev/null
+        sleep 5
     fi
 
     if [ $(dpkg-query -W -f='${Status}' dnsutils 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
         echo "[-] Dnsutils belum terinstall!"
-        echo "[-] Install dnsutils..."
-        sudo apt-get install dnsutils -y
+        echo "[+] Install dnsutils..."
+        sudo apt install dnsutils -y &> /dev/null
     fi
 
 }
+
+
 
 #Config Forwarder dan Reverse
 config_for_rev(){
@@ -44,7 +47,7 @@ config_for_rev(){
     reverse_ip=$(echo $ip | awk -F. '{print $4"."$3"."$2".in-addr.arpa"}')
 
     # config /etc/bind/db.forward
-    echo "Melakukan config db.forward..."
+    echo "[+] Melakukan config db.forward..."
     sudo cat <<EOL | sudo tee /etc/bind/db.forward > /dev/null
 ;###########################################
 ;# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
@@ -69,7 +72,7 @@ nsx2    IN      A       $ip
 EOL
 
     # config /etc/bind/db.reverse
-    echo "Melakukan config db.reverse..."
+    echo "[+] Melakukan config db.reverse..."
     sudo cat <<EOL | sudo tee /etc/bind/db.reverse > /dev/null
 ;###########################################
 ;# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
@@ -90,15 +93,15 @@ EOL
 $digit  IN      PTR     $domain.
 EOL
 
-    echo "Backup file named.conf.options..."
+    echo "[+] Backup file named.conf.options..."
     sudo mv /etc/bind/named.conf.options /etc/bind/named.conf.options.bak
 
     # config /etc/bind/named.conf.options
-    echo "Melakukan config named.conf.options..."
+    echo "[+] Melakukan config named.conf.options..."
     sudo cat <<EOL | sudo tee /etc/bind/named.conf.options > /dev/null
-;###########################################
-;# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
-;###########################################
+//###########################################
+//# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
+//###########################################
 options {
         directory "/var/cache/bind";
 
@@ -126,7 +129,10 @@ options {
 EOL
 #---------------------------------------------------------------------------------
     # config /etc/bind/named.conf.local
-    echo "Melakukan config named.conf.local..."
+    echo "[+] Melakukan backup file named.conf.local..."
+    sudo mv /etc/bind/named.conf.local /etc/bind/named.conf.local.bak
+
+    echo "[+] Melakukan config named.conf.local..."
     sudo cat <<EOL | sudo tee /etc/bind/named.conf.local > /dev/null
 //
 // Do any local configuration here
@@ -147,26 +153,51 @@ zone "$reverse_ip" {
 };
 EOL
 
-    #Menambahkan IP saat ini ke file resolv.conf pada baris pertama 
-    echo "Menambahkan IP saat ini ke file resolv.conf..." 
-    sudo sed -i "1s/^/nameserver $ip\n/" /etc/resolv.conf
-
     #Restart bind9
-    echo "Restart bind9..."
+    echo "[+] Restart bind9..."
     sudo systemctl restart bind9
 
     #check service bind9 berjalan
-    echo "Check service bind9 berjalan..."
+    echo "[+] Check service bind9 berjalan..."
     if [ $(systemctl is-active bind9) == "active" ]; then
-        echo "Bind9 service is running!"
+        echo "[+] Bind9 service berhasil berjalan..."
+        
+        #Menambahkan IP saat ini ke file resolv.conf pada baris pertama 
+        echo "[+] Menambahkan IP saat ini ke file resolv.conf..." 
+        sudo sed -i "1s/^/nameserver $ip\n/" /etc/resolv.conf
+
+        echo "[+] Konfigurasi DNS Server telah selesai..."
+        echo ""
+        echo "[+] Silahkan kunjungin >>> $domain <<<"
+
     else
-        echo "Bind9 service is not running!"
+        echo "[-] Bind9 service gagal berjalan..."
+        echo "[-] Ulangin proses setelah menyelesaikan masalah..."
+        echo "[-] Mulai script configdns.sh dengan parameter --reset"
     fi
 }
 
-    echo "Masukan nama domain: "
+# Apabila bind terinstall namun terjadi kesalahan konfigurasi
+# Menghapus semua konfigurasi bind 
+reset_bind9(){
+    echo "[+] Resetting bind9 configuration..."
+    sudo apt remove --purge bind9 bind9utils bind9-doc -y &> /dev/null
+    sudo rm -rf /etc/bind
+    sudo rm -rf /var/cache/bind
+    echo "[+] Bind9 and its configurations have been reset."
+}
+
+main(){
+    if [ "$1" == "--reset" ]; then
+        reset_bind9
+        exit 0
+    fi
+    check_root
+    check_install
+    echo "[+] Masukan nama domain: "
+    echo -n "[>] "
     read domain 
     config_for_rev $domain
 }
 
-main
+main "$@"
