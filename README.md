@@ -16,14 +16,13 @@ Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan **hasilnya 
 
 ## Usage
 
-### Auto install
+Daftar nama user FTP harus diinputkan secara manual ke dalam file "**userlist.txt**" terutama saat akan menjalankan auto install. Atau bisa diganti sesuai keinginan, tetapi argumen untuk parameter `userlist (-l)` harus disesuaikan dengan nama file tersebut.
 
-> Jika ingin menggunakan opsi auto install, maka daftar nama user FTP harus diinputkan secara manual ke dalam file "**userlist.txt**".
+### Auto install
 
 ```bash
 sudo apt install -y curl && \
-curl -fsSL "https://raw.githubusercontent.com/wahyukiddies/SaFeTP/main/safetp.sh" | sudo tee -a $(pwd)/safetp.sh && \
-sudo bash safetp.sh -l userlist.txt
+curl -fsSL "https://raw.githubusercontent.com/wahyukiddies/SaFeTP/main/safetp.sh" | sudo bash -s -- -l userlist.txt
 ```
 
 ### Manual install
@@ -34,7 +33,7 @@ git clone https://github.com/wahyukiddies/SaFeTP.git && chmod a+x safetp.sh
 
 # And then, run the safetp.sh script with 1 required parameters!
 # Change with your own userlist file!.
-sudo bash safetp.sh -l userlist-sample.txt
+sudo bash safetp.sh -l userlist.txt
 
 # You can change the port by provide -p.
 sudo bash safetp.sh -l userlist.txt -p 2121 # by default is 21.
@@ -46,7 +45,10 @@ sudo bash safetp.sh -l userlist.txt -p 2121 -dir ftpdir # by default is "$HOME/f
 Jika terdapat error ketika mencoba menjalankan di environment Linux, cobalah untuk mengubahnya ke format UNIX/Linux menggunakan tool `dos2unix`:
 
 ```sh
+# Install tool dos2unix.
 sudo apt install -y dos2unix
+# Ubah ke format LF pada shell script.
+dos2unix safetp.sh
 ```
 
 ## References
