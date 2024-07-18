@@ -23,6 +23,33 @@
 # 2. sudo bash safetp.sh -l userlist.txt [OPTIONS...]         |
 ###############################################################
 
+# Fungsi setup untuk cek internet, update, dan upgrade repositori
+initial_setup() {
+  echo "[+] Mengecek koneksi internet..."
+  is_connected=$(ping -c 3 google.com &> /dev/null)
+  if [ $? -eq 0 ]; then
+    echo "[+] Koneksi internet OK"
+    echo "[+] Update dan upgrade repositori sistem..."
+    (sudo apt update && sudo apt upgrade -y) &> /dev/null
+    echo "[+] Repositori sistem berhasil diperbarui"
+  else
+    echo "[-] Tidak ada koneksi internet!"
+    echo "[-] Exit dari program!"
+    exit 1
+  fi
+}
+
+# Fungsi install dependensi yang dibutuhkan
+install_dependensi() {
+  echo "[+] Sedang menginstal dependensi..."
+  # Dependensi yang dibutuhkan.
+  sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
+  # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
+  sudo ln -s /usr/games/lolcat /usr/bin/lolcat
+  wait # Tunggu hingga proses instalasi dependensi selesai.
+  echo "[+] Dependensi berhasil diinstal"
+}
+
 # Fungsi banner untuk menampilkan informasi opsi-opsi yang tersedia pada program
 banner() {
   desain_banner="
@@ -185,13 +212,23 @@ EOL
 #}
 
 main() {
+  # Cek apakah software vsftpd sudah terinstall atau belum
+  is_vsftpd_installed=$(sudo dpkg -l | grep vsftpd &> /dev/null)
+  # Jika belum terinstall, maka jalankan fungsi 'initial_setup' dan 'install_dependensi'.
+  if [[ $? -ne 0 ]]; then
+    initial_setup
+    install_dependensi
+  fi
+
   # Parse command line arguments
   if [ $# -eq 0 ]; then
     banner
     exit 1
   fi
 
+  # Lakukan perulangan untuk membaca parameter yang diberikan.
   while [[ "$#" -gt 0 ]]; do
+    # Cek parameter yang diberikan.
     case $1 in
       -l|--userlist) [[ -n "$USERLIST" ]] && { echo "Duplicate parameter: $1"; exit 1; }; USERLIST="$2"; shift ;;
       -dir|--directory) [[ -n "$DIRECTORY" ]] && { echo "Duplicate parameter: $1"; exit 1; }; DIRECTORY="$2"; shift ;;
@@ -204,6 +241,7 @@ main() {
     shift
   done
 
+  # Cek apakah parameter -l sudah diberikan atau belum.
   if [[ -z "$USERLIST" ]]; then
     echo "[-] File userlist bersifat WAJIB!"
     banner
