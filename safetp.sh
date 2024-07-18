@@ -45,7 +45,7 @@ install_dependensi() {
   # Dependensi yang dibutuhkan.
   sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
   # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
-  sudo ln -s /usr/games/lolcat /usr/bin/lolcat
+  sudo ln -sf /usr/games/lolcat /usr/bin/lolcat
   wait # Tunggu hingga proses instalasi dependensi selesai.
   echo "[+] Dependensi berhasil diinstal"
 }
@@ -62,7 +62,10 @@ banner() {
 v1.0 | Kelompok 4 - TMJ 4B
 "
 
-  echo "$desain_banner" | lolcat
+  # Cek apakah lolcat terinstall.
+  is_lolcat_installed=$(dpkg -l | grep lolcat &> /dev/null)
+  # Jika lolcat terinstall, maka tampilkan banner dengan warna random.
+  [[ $? -ne 0 ]] && (echo "$desain_banner") || (echo "$desain_banner" | lolcat)
 
   echo "----------------------------------------------------"
   echo -e "Usage: sudo bash safetp.sh -l \$args [OPTIONS...]\n
@@ -202,8 +205,8 @@ EOL
   sleep 1 # tunggu 1 detik.
 
   # 7. Menampilkan notif jika konfigurasi FTP server selesai.
-  echo "[OK] Konfigurasi FTP server selesai" | lolcat
-  echo "[OK] FTP server dapat diakses melalui port: ${PORT:-21}" | lolcat
+  echo -e "\e[32m[OK] Konfigurasi FTP server selesai\e[1m"
+  echo -e "\e[32m[OK] FTP server dapat diakses melalui port: ${PORT:-21}\e[1m"
   sleep 0.5 # tunggu 0.5 detik.
 }
 
@@ -212,13 +215,22 @@ EOL
 #}
 
 main() {
-  # Cek apakah software vsftpd sudah terinstall atau belum
-  is_vsftpd_installed=$(sudo dpkg -l | grep vsftpd &> /dev/null)
-  # Jika belum terinstall, maka jalankan fungsi 'initial_setup' dan 'install_dependensi'.
-  if [[ $? -ne 0 ]]; then
-    initial_setup
-    install_dependensi
-  fi
+  # Array semua dependensi yang
+  dependensi=(lolcat nmap vsftpd openssl bind9 net-tools)
+
+  # Cek apakah semua dependensi di atas sudah terinstall atau belum.
+  dependensi_missing=false
+  for dep in "${dependensi[@]}"; do
+    is_installed=$(dpkg -l | grep "$dep" &> /dev/null)
+    # Jika belum terinstall, maka jalankan fungsi 'initial_setup' dan 'install_dependensi'.
+    if [ $? -ne 0 ]; then
+      dependensi_missing=true
+      break # Keluar dari perulangan.
+    fi
+  done
+
+  # Jalankan fungsi 'initial_setup' dan 'install_dependensi' jika ada dependensi yang belum terinstall.
+  [ "$dependensi_missing" = true ] && { initial_setup; install_dependensi; }
 
   # Parse command line arguments
   if [ $# -eq 0 ]; then
