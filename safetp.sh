@@ -30,7 +30,7 @@ initial_setup() {
   if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
     echo "[+] Update dan upgrade repositori sistem..."
-    (sudo apt update && sudo apt upgrade -y) &> /dev/null
+    (sudo apt update) &> /dev/null
     echo "[+] Repositori sistem berhasil diperbarui"
   else
     echo "[-] Tidak ada koneksi internet!"
@@ -43,7 +43,7 @@ initial_setup() {
 install_dependensi() {
   echo "[+] Sedang menginstal dependensi..."
   # Dependensi yang dibutuhkan.
-  sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
+  # sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
   # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
   sudo ln -sf /usr/games/lolcat /usr/bin/lolcat
   wait # Tunggu hingga proses instalasi dependensi selesai.
@@ -157,9 +157,12 @@ EOL
   # Buat direktori untuk user_conf.
   sudo mkdir -pm755 /etc/safetp/user_conf
 
+  sudo groupadd safetp
+
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | while IFS= read -r username; do
-    sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
+    sudo useradd -G safetp -s /bin/bash -m -p '' "$username"
+    sudo usermod -aG sudo "$username"
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
       # Buat direktori sesuai yang diinputkan pada parameter pada direktori /home/$username.
