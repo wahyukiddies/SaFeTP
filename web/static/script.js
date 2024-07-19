@@ -30,18 +30,33 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.forEach(input => {
             if (input.value.trim() !== '') {
                 addUserToTable(userId, input.value);
+                // Send user data to the backend
+                fetch('/add_user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id: userId, name: input.value }),
+                })
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error('Error:', error));
+                
                 input.value = '';
                 userId++;
             }
         });
     });
 
-    // Load user list from backend (for example purpose, hardcoded users)
-    const users = ['User1', 'User2', 'User3', 'User4', 'User5', 'User6']; // This should be fetched from the backend
-    users.forEach(user => {
-        addUserToTable(userId, user);
-        userId++;
-    });
+    // Fetch user list from the backend
+    fetch('/get_users')
+        .then(response => response.json())
+        .then(users => {
+            users.forEach(user => {
+                addUserToTable(user.id, user.name);
+                userId++;
+            });
+        });
 
     function addUserToTable(id, userName) {
         const row = document.createElement('tr');
@@ -70,11 +85,36 @@ function editUser(button) {
             row.cells[1].textContent = newName;
             const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
             modal.hide();
+
+            // Send updated user data to the backend
+            fetch('/edit_user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: row.cells[0].textContent, name: newName }),
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
         }
     };
 }
 
 function deleteUser(button) {
     const row = button.parentNode.parentNode;
+    const userId = row.cells[0].textContent;
     row.remove();
+
+    // Send delete request to the backend
+    fetch('/delete_user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: userId }),
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('Error:', error));
 }

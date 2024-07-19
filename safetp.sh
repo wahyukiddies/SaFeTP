@@ -154,12 +154,20 @@ EOL
   # Ganti permission allowed file agar tidak bisa dimodifikasi oleh user lain.
   sudo chmod 644 /etc/safetp/allowed
 
-  # Buat direktori untuk user_conf.
+  # Buat direktori untuk user_conf.>
   sudo mkdir -pm755 /etc/safetp/user_conf
+
+  # Create group 'safetp' untuk user FTP.
+  sudo groupadd safetp
+
+  # Get the group ID of 'safetp' group.
+  group_id=$(getent group safetp | cut -d: -f3)
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | while IFS= read -r username; do
-    sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
+    # Buat user baru dengan group 'safetp' dan shell '/bin/bash'.
+    sudo useradd -G safetp -s /bin/bash -m -p '' "$username"
+
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
       # Buat direktori sesuai yang diinputkan pada parameter pada direktori /home/$username.
