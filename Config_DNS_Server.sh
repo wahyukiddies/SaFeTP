@@ -17,7 +17,12 @@ check_install(){
         echo "[-] Bind9 belum terinstall!"
         echo "[+] Install bind9..."
         sudo apt install bind9 bind9utils bind9-doc -y &> /dev/null
-        sleep 5
+        
+        #check apakah bind9 berhasil terinstall
+        if [ $(dpkg-query -W -f='${Status}' bind9 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
+        echo "[-] Bind9 gagal terinstall..."
+        exit 0
+        fi
     fi
     
     if [ $(dpkg-query -W -f='${Status}' dnsutils 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
@@ -163,13 +168,21 @@ EOL
         sudo sed -i "1s/^/nameserver $ip\n/" /etc/resolv.conf
 
         echo "[+] Konfigurasi DNS Server telah selesai..."
+        echo "[+] Gunakan '--reset' untuk menghapus configurasi"
+        echo "[+] --> sudo ./Contig_DNS_Server.sh --reset"
         echo ""
-        echo "[+] Domain diatur menjadi >>> $domain <<<"
+        echo -e "[+] Domain diatur menjadi >>> $domain <<< \n"
 
     else
         echo "[-] Bind9 service gagal berjalan..."
-        echo "[-] Ulangin proses setelah menyelesaikan masalah..."
-        echo "[-] Mulai script configdns.sh dengan parameter --reset"
+        echo "[+] Mencoba memulai konfigurasi ulang..."
+        reset_bind9 
+        config_for_rev
+        if ! [ $(systemctl is-active bind9) == "active" ]; then
+            echo "[-] Ulangin proses setelah menyelesaikan masalah..."
+            echo "[-] Mulai script configdns.sh dengan parameter --reset"
+            exit 0
+        fi
     fi
 }
 
@@ -198,6 +211,7 @@ reset_bind9(){
 }
 
 main(){
+    echo -e "==] Konfigurasi DNS Server [===\n "
     ip=$(hostname -I | awk '{print $1}')
     if [ "$1" == "--reset" ]; then
         reset_bind9 $IP
