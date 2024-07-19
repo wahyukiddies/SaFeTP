@@ -24,7 +24,7 @@ if [[ $is_bind9_exist == "bind9.service" ]]; then
 
   # Setelah itu, hapus program vsftpd dan bind9.
   echo "[+] Menghapus program vsftpd dan bind9"
-  sudo apt autoremove -y vsftpd bind9 &> /dev/null
+  (sudo apt autoremove -y vsftpd bind9 && sudo apt purge -y vsftpd bind9) &> /dev/null
   sleep 0.5 # Tunggu 0.5 detik.
   echo "[+] Program vsftpd dan bind9 berhasil dihapus"
 else
@@ -36,7 +36,7 @@ else
 
   # Setelah itu, hapus program vsftpd dan bind9.
   echo "[+] Menghapus program vsftpd"
-  sudo apt autoremove -y vsftpd
+  (sudo apt autoremove -y vsftpd && sudo apt purge -y vsftpd) &> /dev/null
   sleep 0.5 # Tunggu 0.5 detik.
   echo "[+] Program vsftpd berhasil dihapus"
 fi
