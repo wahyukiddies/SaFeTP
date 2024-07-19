@@ -27,25 +27,29 @@ document.addEventListener('DOMContentLoaded', () => {
     submitButton.addEventListener('click', (e) => {
         e.preventDefault();
         const inputs = document.querySelectorAll('.right-box .row input');
+        const userNames = [];
+
         inputs.forEach(input => {
             if (input.value.trim() !== '') {
+                userNames.push(input.value);
                 addUserToTable(userId, input.value);
-                // Send user data to the backend
-                fetch('/add_user', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id: userId, name: input.value }),
-                })
-                .then(response => response.json())
-                .then(data => console.log(data))
-                .catch(error => console.error('Error:', error));
-                
-                input.value = '';
                 userId++;
             }
         });
+
+        if (userNames.length > 0) {
+            // Send user data to the backend
+            fetch('/add_user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ names: userNames }),
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        }
     });
 
     // Fetch user list from the backend
@@ -104,17 +108,24 @@ function editUser(button) {
 function deleteUser(button) {
     const row = button.parentNode.parentNode;
     const userId = row.cells[0].textContent;
-    row.remove();
+    const password = prompt("Please enter your password to delete the user:");
 
-    // Send delete request to the backend
-    fetch('/delete_user', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: userId }),
-    })
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error('Error:', error));
+    if (password) {
+        // Send delete request to the backend
+        fetch('/delete_user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id: userId, password: password }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                row.remove();
+            }
+            console.log(data);
+        })
+        .catch(error => console.error('Error:', error));
+    }
 }
