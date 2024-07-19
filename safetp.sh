@@ -43,7 +43,7 @@ initial_setup() {
 install_dependensi() {
   echo "[+] Sedang menginstal dependensi..."
   # Dependensi yang dibutuhkan.
-  sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
+  sudo apt install -y lolcat vsftpd openssl bind9 net-tools &> /dev/null
   # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
   sudo ln -sf /usr/games/lolcat /usr/bin/lolcat
   wait # Tunggu hingga proses instalasi dependensi selesai.
@@ -161,7 +161,7 @@ EOL
   sudo mkdir -pm755 /etc/safetp/user_conf
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
-  grep -v '^\s*$' /etc/safetp/allowed | while IFS= read -r username; do
+  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
     sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
@@ -219,7 +219,7 @@ EOL
 
 main() {
   # Array semua dependensi yang
-  dependensi=(lolcat nmap vsftpd openssl bind9 net-tools)
+  dependensi=(lolcat vsftpd openssl bind9 net-tools)
 
   # Cek apakah semua dependensi di atas sudah terinstall atau belum.
   dependensi_missing=false
