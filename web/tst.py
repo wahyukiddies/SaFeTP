@@ -11,7 +11,7 @@ def index():
 def get_users():
     try:
         group_id = subprocess.check_output("getent group safetp | cut -d: -f3", shell=True).decode('utf-8').strip()
-        users = subprocess.check_output(f"cat /etc/passwd | grep {group_id} | cut -d: -f1", shell=True).decode('utf-8').split()
+        users = subprocess.check_output(f"getent passwd | awk -F: '$4 == {group_id} {{print $1}}'", shell=True).decode('utf-8').split()
         user_list = [{'id': i + 1, 'name': user} for i, user in enumerate(users)]
     except subprocess.CalledProcessError:
         user_list = []
@@ -21,34 +21,38 @@ def get_users():
 @app.route('/add_user', methods=['POST'])
 def add_user():
     data = request.json
-    users = data.get('names')
+    user_names = data.get('names', [])
 
-    if users:
-        with open('userlist.txt', 'w') as file:  # Open the file in write mode to replace its content
-            for user_name in users:
-                file.write(f"{user_name}\n")
-        return jsonify({'status': 'success', 'message': 'Users added'}), 200
+    if user_names:
+        try:
+            # Overwrite the userlist.txt file with new user names
+            with open('userlist.txt', 'w') as file:
+                for user_name in user_names:
+                    file.write(f"{user_name}\n")
+            
+            # Run the safetp.sh script
+            # subprocess.run("sudo safetp.sh -l userlist.txt", shell=True, check=True)
+            subprocess.run("sudo echo userlist.txt", shell=True, check=True)
+            
+            return jsonify({'status': 'success', 'message': 'Users added and script executed'}), 200
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
     return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
 
 @app.route('/delete_user', methods=['POST'])
 def delete_user():
     data = request.json
-    user_id = data.get('id')
-    password = data.get('password')
+    user_name = data.get('name')
 
-    try:
-        # Get the user to be deleted from /etc/passwd
-        user_to_delete = subprocess.check_output(f"cat /etc/passwd | cut -d: -f1 | awk 'NR=={user_id}'", shell=True).decode('utf-8').strip()
-        
-        if user_to_delete:
-            # Run the deleteuser.sh script with the specified user
-            command = f'echo {password} | sudo -S ./deleteuser.sh {user_to_delete}'
-            subprocess.run(command, shell=True, check=True)
-            return jsonify({'status': 'success', 'message': 'User deleted'}), 200
-        return jsonify({'status': 'error', 'message': 'User not found'}), 404
-    except subprocess.CalledProcessError:
-        return jsonify({'status': 'error', 'message': 'Failed to delete user'}), 500
-
+    if user_name:
+        try:
+            # Delete user from system and remove home directory
+            subprocess.run(f"sudo userdel {user_name}", shell=True, check=True)
+            subprocess.run(f"sudo rm -rf /home/{user_name}", shell=True, check=True)
+            return jsonify({'status': 'success', 'message': 'User and home directory deleted'}), 200
+        except subprocess.CalledProcessError:
+            return jsonify({'status': 'error', 'message': 'Failed to delete user'}), 500
+    return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

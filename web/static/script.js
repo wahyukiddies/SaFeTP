@@ -47,7 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ names: userNames }),
             })
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => {
+                console.log(data);
+                if (data.status === 'success') {
+                    // Clear the inputs
+                    inputs.forEach(input => {
+                        input.value = '';
+                    });
+                }
+            })
             .catch(error => console.error('Error:', error));
         }
     });
@@ -107,25 +115,23 @@ function editUser(button) {
 
 function deleteUser(button) {
     const row = button.parentNode.parentNode;
-    const userId = row.cells[0].textContent;
-    const password = prompt("Please enter your password to delete the user:");
+    const userName = row.cells[1].textContent;
 
-    if (password) {
-        // Send delete request to the backend
-        fetch('/delete_user', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: userId, password: password }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                row.remove();
-            }
-            console.log(data);
-        })
-        .catch(error => console.error('Error:', error));
-    }
+    // Send delete request to the backend
+    fetch('/delete_user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: userName }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        if (data.status === 'success') {
+            // Remove the row from the table
+            row.remove();
+        }
+    })
+    .catch(error => console.error('Error:', error));
 }
