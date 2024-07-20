@@ -81,7 +81,6 @@ show_help() {
     -l, --userlist: File daftar user yang dapat mengakses server FTP (WAJIB!),\n
     -dir, --directory: Root direktori untuk tiap user (default: /home/\$user/ftp),\n
     -p, --port: Port untuk server FTP (default: 21),\n
-    -ip, --ip-address: Alamat IP untuk DNS server,\n
     -d, --domain: Nama domain untuk DNS server,\n
     -h, --help: Menampilkan opsi yang tersedia."
   echo "----------------------------------------------------"
@@ -200,8 +199,8 @@ EOL
   # Copy file userlist ke direktori /etc/safetp/ dan ganti nama filenya menjadi 'allowed'.
   sudo cp -f "$USERLIST" /etc/safetp/allowed
 
-  # Ganti permission allowed file agar tidak bisa dimodifikasi oleh user lain.
-  sudo chmod 644 /etc/safetp/allowed
+  # Ganti permission allowed file agar bisa diedit oleh python nantinya.
+  sudo chmod 777 /etc/safetp/allowed
 
   # Buat direktori untuk user_conf.
   sudo mkdir -pm755 /etc/safetp/user_conf
