@@ -454,7 +454,7 @@ EOL
   echo "[+] Service bind9 berhasil running..."
   # Menambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
   echo "[+] Menambahkan alamat IP saat ini ke file '/etc/resolv.conf'..." 
-  echo "DNS=$1" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
+  echo "DNS=$ip_address" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
   sudo systemctl restart -q systemd-resolved
   sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
   sleep 0.5 # Tunggu 0.5 detik.
