@@ -18,13 +18,6 @@ Kami telah mencobanya di **Ubuntu Server 22.04.4 (LTS version)** dan **hasilnya 
 
 Daftar nama user FTP harus diinputkan secara manual ke dalam file "**userlist.txt**" terutama saat akan menjalankan auto install. Atau bisa diganti sesuai keinginan, tetapi argumen untuk parameter `userlist (-l)` harus disesuaikan dengan nama file tersebut.
 
-### Auto install
-
-```bash
-sudo apt install -y curl && \
-curl -fsSL "https://raw.githubusercontent.com/wahyukiddies/SaFeTP/main/safetp.sh" | sudo bash -s -- -l userlist.txt
-```
-
 ### Manual install
 
 ```bash
@@ -38,8 +31,11 @@ sudo bash safetp.sh -l userlist.txt
 # You can change the port by provide -p.
 sudo bash safetp.sh -l userlist.txt -p 2121 # by default is 21.
 
-# And also you can change the directory name for each allowed users:
+# And also, you can change the directory name for each allowed users:
 sudo bash safetp.sh -l userlist.txt -p 2121 -dir ftpdir # by default is "$HOME/ftp".
+
+# Lastly, you can add spesific domain name to make easy access to FTP server and SaFeTP web.
+sudo bash safetp.sh -l userlist.txt -p 2121 -dir ftpdir -d safetp.local
 ```
 
 Jika terdapat error ketika mencoba menjalankan di environment Linux, cobalah untuk mengubahnya ke format UNIX/Linux menggunakan tool `dos2unix`:

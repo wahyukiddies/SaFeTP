@@ -23,12 +23,17 @@
 # 2. sudo bash safetp.sh -l userlist.txt [OPTIONS...]         |
 ###############################################################
 
+# Variabel untuk mendapatkan IP address saat ini.
+IP_ADDRESS=$(hostname -I | awk '{print $1}')
+
 # Fungsi setup untuk cek internet, update, dan upgrade repositori
 initial_setup() {
   show_banner
   echo "----------------------------------------------------"
   echo "[+] Mengecek koneksi internet..."
-  if ping -c 3 google.com &> /dev/null; then
+  # Perintah untuk mengecek koneksi internet.
+  ping -c 3 google.com &> /dev/null
+  if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
     echo "[+] Update repositori sistem..."
     sudo apt update &> /dev/null
@@ -90,48 +95,15 @@ show_help() {
   echo "----------------------------------------------------"
 }
 
-# Fungsi untuk menghapus direktori dan file konfigurasi FTP server
-cleanup_ftp() {
-  # Clean up semua folder dan file terkait.
-  echo "[+] Clean up konfigurasi FTP server..."
-  sudo rm -rf /etc/safetp /etc/vsftpd.conf /etc/vsftpd.conf.default /etc/ssl/certs/safetp.crt /etc/ssl/private/safetp.key
-
-  # Hapus semua user FTP.
-  echo "[+] Menghapus semua user FTP..."
-  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
-    sudo groupdel -f $username 2>/dev/null
-    sudo userdel -r "$username" 2>/dev/null
-  done
-
-  # Mengonfigurasi ulang FTP server.
-  configure_secure_ftp
-}
-
-# Fungsi untuk menghapus direktori dan file konfigurasi DNS server
-cleanup_dns() {
-  # Clean up semua folder dan file terkait.
-  echo "[+] Clean up konfigurasi DNS server..."
-  sudo rm -rf /etc/bind /var/cache/bind
-
-  # Mengonfigurasi ulang DNS server.
-  configure_dns
-}
-
-cleanup_web() {
-  # Clean up semua folder dan file terkait.
-  echo "[+] Clean up konfigurasi web server..."
-  sudo rm -rf /var/www/web /etc/nginx/sites-available/safetp_web.conf /etc/nginx/sites-enabled/safetp_web.conf /etc/ssl/certs/safetp_web.crt /etc/ssl/private/safetp_web.key
-
-  # Mengonfigurasi ulang web server.
-  deploy_web
-}
-
 configure_secure_ftp() {
   # 1. Cek service vsftpd apakah sudah berjalan atau belum.
   echo "[+] Memulai konfigurasi FTP server..."
 
+  # Perintah untuk mengecek apakah service FTP server sudah berjalan atau belum.
+  netstat -tanp | grep :21 &> /dev/null
+
   # Cek port 21 (FTP) apakah sudah terbuka atau belum. 
-  if netstat -tanp | grep :21 &> /dev/null; then
+  if [ $? -eq 0 ]; then
     echo "[+] Service FTP server sudah berjalan"
   else
     echo "[-] Service FTP server belum berjalan"
@@ -209,8 +181,11 @@ EOL
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+    # Perintah untuk apakah user sudah ada atau belum.
+    id "$username" &> /dev/null
+
     # Cek apakah user tidak ditemukan, jika iya, maka buat user tersebut.
-    if ! id -u "$username" &> /dev/null; then
+    if [ $? -ne 0 ]; then
       sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
       echo "[+] User $username berhasil ditambahkan."
     else
@@ -257,7 +232,7 @@ EOL
     CN="ftp.$DOMAIN"
   # Jika tidak, maka gunakan alamat IP saat ini.
   else
-    CN="$ip_address"
+    CN="$IP_ADDRESS"
   fi
 
   # Generate self-signed SSL certificate untuk 1 tahun.
@@ -291,14 +266,12 @@ configure_dns() {
   # Cek apakah parameter -d diberikan atau tidak.
   if [ -n "$DOMAIN" ]; then
     echo "[+] Memulai konfigurasi DNS server..."
-    # IP address untuk DNS server.
-    local ip_address=$(sudo hostname -I | awk '{print $1}')
 
     # Mendapatkan oktet terakhir (IP Host) dari alamat IP saat ini.
-    local last_ip=$(echo "$ip_address" | awk -F. '{print $4}')
+    local last_ip=$(echo "$IP_ADDRESS" | awk -F. '{print $4}')
 
     # Membalikkan alamat IP (reverse).
-    local reverse_ip_address=$(echo "$ip_address" | awk -F. '{print $3"."$2"."$1".in-addr.arpa"}')
+    local reverse_ip_address=$(echo "$IP_ADDRESS" | awk -F. '{print $3"."$2"."$1".in-addr.arpa"}')
 
     # Konfigurasi file forward '/etc/bind/db.forward'.
     echo "[+] Melakukan konfigurasi pada file 'db.forward'..."
@@ -319,12 +292,12 @@ configure_dns() {
 ;
 @       IN      NS      nsx1.$DOMAIN.
 @       IN      NS      nsx2.$DOMAIN.
-@       IN      A       $ip_address
+@       IN      A       $IP_ADDRESS
 @       IN      AAAA    ::1
-nsx1    IN      A       $ip_address
-nsx2    IN      A       $ip_address
-ftp     IN      A       $ip_address
-www     IN      A       $ip_address
+nsx1    IN      A       $IP_ADDRESS
+nsx2    IN      A       $IP_ADDRESS
+ftp     IN      A       $IP_ADDRESS
+www     IN      A       $IP_ADDRESS
 EOL
     sleep 1 # Tunggu 1 detik.
 
@@ -375,7 +348,7 @@ options {
   // the all-0's placeholder.
 
   forwarders {
-    $ip_address;
+    $IP_ADDRESS;
   };
 
   //========================================================================
@@ -417,7 +390,9 @@ EOL
 
     # Cek konfigurasi file 'db.forward'.
     echo "[+] Cek konfigurasi file 'db.forward'..."
+    # Perintah untuk mengecek apakah konfigurasi forward zone sudah benar atau belum.
     sudo named-checkzone "$DOMAIN" /etc/bind/db.forward &> /dev/null
+
     # Jika ada error, maka tampilkan pesan error lalu exit.
     if [ $? -ne 0 ]; then
       echo "[-] Ada error pada konfigurasi file 'db.forward'!"
@@ -429,8 +404,9 @@ EOL
 
     # Cek konfigurasi file 'db.reverse'.
     echo "[+] Cek konfigurasi file 'db.reverse'..."
-    # Perintah untuk mengecek apakah konfigurasi DNS server sudah benar atau belum.
-    sudo named-checkzone "$ip_address" /etc/bind/db.reverse &> /dev/null
+
+    # Perintah untuk mengecek apakah konfigurasi reverse zone sudah benar atau belum.
+    sudo named-checkzone "$IP_ADDRESS" /etc/bind/db.reverse &> /dev/null
     # Jika ada error, maka tampilkan pesan error lalu exit.
     if [ $? -ne 0 ]; then
       echo "[-] Ada error pada konfigurasi DNS server!"
@@ -458,7 +434,7 @@ EOL
     echo "[+] Service bind9 berhasil running..."
     # Menambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
     echo "[+] Menambahkan alamat IP saat ini ke file '/etc/resolv.conf'..." 
-    echo "DNS=$ip_address" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
+    echo "DNS=$IP_ADDRESS" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
     sudo systemctl restart -q systemd-resolved
     sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     sleep 0.5 # Tunggu 0.5 detik.
@@ -497,7 +473,7 @@ deploy_web() {
     CN="www.$DOMAIN"
   # Jika tidak, maka gunakan alamat IP saat ini.
   else
-    CN="$ip_address"
+    CN="$IP_ADDRESS"
   fi
 
   sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
@@ -536,20 +512,20 @@ EOL
     sudo cat <<EOL | sudo tee /etc/nginx/sites-available/safetp_web.conf > /dev/null
 server {
   listen 80 default_server;
-  server_name $ip_address;
+  server_name $IP_ADDRESS;
   return 301 https://\$host\$request_uri;
 }
 
 server {
   listen 443 ssl default_server;
-  server_name $ip_address;
+  server_name $IP_ADDRESS;
 
   ssl_certificate /etc/ssl/certs/safetp_web.crt;
   ssl_certificate_key /etc/ssl/private/safetp_web.key;
 
   location / {
     include proxy_params;
-    proxy_pass http://$ip_address:8080/;
+    proxy_pass http://$IP_ADDRESS:8080/;
   }
 }
 EOL
@@ -557,7 +533,7 @@ EOL
   fi
 
   # 7. Buat simbolik link ke sites-enabled dan hapus default config.
-  echo "[+] Membuat simbolik link ke folder 'sites-enabled'"
+  echo "[+] Membuat symlink ke folder 'sites-enabled'"
   sudo ln -sf /etc/nginx/sites-available/safetp_web.conf /etc/nginx/sites-enabled/safetp_web.conf
 
   # 8. Menghapus default konfigurasi Nginx.
@@ -567,8 +543,11 @@ EOL
 
   # Cek konfigurasi nginx dan reload service Nginx.
   echo "[+] Mengecek konfigurasi Nginx"
+  # Perintah untuk mengecek konfigurasi Nginx dan reload service Nginx.
+  sudo nginx -t &> /dev/null && sudo systemctl reload -q nginx.service
+
   # Jika konfigurasi Nginx berhasil, maka deploy web app.
-  if sudo nginx -t 2>&1 | grep -q "ok"; then
+  if [ $? -eq 0 ]; then
     # Menyalakan ulang service Nginx.
     echo "[+] Menyalakan ulang service Nginx"
     sudo systemctl restart -q nginx.service
@@ -582,6 +561,42 @@ EOL
     exit 1
   fi
   echo "----------------------------------------------------"
+}
+
+# Fungsi untuk menghapus direktori dan file konfigurasi FTP server
+cleanup_ftp() {
+  # Clean up semua folder dan file terkait.
+  echo "[+] Clean up konfigurasi FTP server..."
+  sudo rm -rf /etc/safetp /etc/vsftpd.conf /etc/vsftpd.conf.default /etc/ssl/certs/safetp.crt /etc/ssl/private/safetp.key
+
+  # Hapus semua user FTP.
+  echo "[+] Menghapus semua user FTP..."
+  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+    sudo groupdel -f $username 2>/dev/null
+    sudo userdel -r "$username" 2>/dev/null
+  done
+
+  # Mengonfigurasi ulang FTP server.
+  configure_secure_ftp
+}
+
+# Fungsi untuk menghapus direktori dan file konfigurasi DNS server
+cleanup_dns() {
+  # Clean up semua folder dan file terkait.
+  echo "[+] Clean up konfigurasi DNS server..."
+  sudo rm -rf /etc/bind /var/cache/bind
+
+  # Mengonfigurasi ulang DNS server.
+  configure_dns
+}
+
+cleanup_web() {
+  # Clean up semua folder dan file terkait.
+  echo "[+] Clean up konfigurasi web server..."
+  sudo rm -rf /var/www/web /etc/nginx/sites-available/safetp_web.conf /etc/nginx/sites-enabled/safetp_web.conf /etc/ssl/certs/safetp_web.crt /etc/ssl/private/safetp_web.key
+
+  # Mengonfigurasi ulang web server.
+  deploy_web
 }
 
 main() {
@@ -693,17 +708,14 @@ main() {
   # Panggil fungsi 'deploy_web'.
   deploy_web
 
-  # Variabel untuk mendapatkan IP address saat ini.
-  local ip_address=$(hostname -I | awk '{print $1}')
-
   if [ -n "$DOMAIN" ]; then
-    echo -e "\e[34m[+] Silahkan tambahkan alamat IP: $ip_address ke file '/etc/resolv.conf' ke Linux client, atau jalankan script 'dns_config.sh' di Linux client!\e[1m"
+    echo -e "\e[34m[+] Silahkan tambahkan alamat IP: $IP_ADDRESS ke file '/etc/resolv.conf' ke Linux client, atau jalankan script 'dns_config.sh' di Linux client!\e[1m"
 
     echo -e "\e[32m[+] Silahkan akses FTP server menggunakan domain: ftp.${DOMAIN} di port: ${PORT:-21}\e[1m"
     echo -e "\e[32m[+] Silahkan akses SaFeTP web menggunakan domain: www.${DOMAIN}\e[1m"
   else
-    echo -e "\e[32m[+] Silahkan akses FTP server menggunakan alamat IP: $ip_address di port: ${PORT:-21}\e[1m"
-    echo -e "\e[32m[+] Silahkan akses SaFeTP web menggunakan alamat IP: $ip_address\e[1m"
+    echo -e "\e[32m[+] Silahkan akses FTP server menggunakan alamat IP: $IP_ADDRESS di port: ${PORT:-21}\e[1m"
+    echo -e "\e[32m[+] Silahkan akses SaFeTP web menggunakan alamat IP: $IP_ADDRESS\e[1m"
   fi
   echo -e "\e[32m[OK] Instalasi dan konfigurasi SaFeTP selesai!\e[1m"
 }
