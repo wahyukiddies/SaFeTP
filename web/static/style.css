@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #ececec;
+}
+
+.box-area {
+    width: 930px;
+}
+
+.right-box {
+    padding: 40px 30px 40px 40px;
+}
+
+::placeholder {
+    font-size: 16px;
+}
+
+.rounded-4 {
+    border-radius: 20px;
+}
+
+.rounded-5 {
+    border-radius: 30px;
+}
+
+.tambah {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+    width: 100%;
+    align-content: space-around;
+}
+
+#tambah {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 5px;
+}
+
+button span {
+    margin-left: 5px;
+}
+
+#kurang {
+    margin-left: 5px;
+}
+
+#submit {
+    width: 100%;
+}
+
+/* User List Styling */
+#user-list {
+    margin-top: 20px;
+}
+
+.table-responsive {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+}
+
+.table tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* For small screens */
+@media only screen and (max-width: 768px) {
+    .box-area {
+        margin: 0 10px;
+    }
+    .left-box {
+        height: 100px;
+        overflow: hidden;
+    }
+    .right-box {
+        padding: 20px;
+    }
+}
