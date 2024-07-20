@@ -35,7 +35,7 @@ def add_user():
             
             # Run the safetp.sh script
             # subprocess.run("sudo safetp.sh -l userlist.txt", shell=True, check=True)
-            subprocess.run("sudo echo userlist.txt", shell=True, check=True)
+            subprocess.run("./safetp.sh -l userlist.txt", shell=True, check=True)
             
             return jsonify({'status': 'success', 'message': 'Users added and script executed'}), 200
         except Exception as e:
