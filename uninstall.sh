@@ -63,6 +63,7 @@ fi
 # 4. Hapus semua user FTP.
 echo "[+] Menghapus semua user FTP"
 grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+  sudo groupdel -f $username 2>/dev/null
   sudo userdel -r $username 2>/dev/null
 done
 sleep 0.5 # Tunggu 0.5 detik.
@@ -100,6 +101,22 @@ if [ -f /etc/ssl/private/safetp.key ]; then
   sleep 0.5 # Tunggu 0.5 detik.
 else
   echo "[-] Sertifikat SSL 'safetp.key' tidak ditemukan"
+fi
+
+if [ -f /etc/ssl/certs/safetp_web.crt ]; then
+  sudo rm -f /etc/ssl/certs/safetp_web.crt
+  echo "[+] Sertifikat SSL 'safetp_web.crt' berhasil dihapus"
+  sleep 0.5 # Tunggu 0.5 detik.
+else
+  echo "[-] Sertifikat SSL 'safetp_web.crt' tidak ditemukan"
+fi
+
+if [ -f /etc/ssl/private/safetp_web.key ]; then
+  sudo rm -f /etc/ssl/private/safetp_web.key
+  echo "[+] Sertifikat SSL 'safetp_web.key' berhasil dihapus"
+  sleep 0.5 # Tunggu 0.5 detik.
+else
+  echo "[-] Sertifikat SSL 'safetp_web.key' tidak ditemukan"
 fi
 
 echo -e "\e[32m[OK] Uninstall program safetp berhasil\e[1m"
