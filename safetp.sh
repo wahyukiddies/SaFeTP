@@ -25,12 +25,13 @@
 
 # Fungsi setup untuk cek internet, update, dan upgrade repositori
 initial_setup() {
+  show_banner
   echo "[+] Mengecek koneksi internet..."
-  is_connected=$(ping -c 3 google.com &> /dev/null)
+  ping -c 3 google.com &> /dev/null
   if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
     echo "[+] Update repositori sistem..."
-    (sudo apt update) &> /dev/null
+    sudo apt update &> /dev/null
     echo "[+] Repositori sistem berhasil diperbarui"
   else
     echo "[-] Tidak ada koneksi internet!"
@@ -42,16 +43,21 @@ initial_setup() {
 # Fungsi install dependensi yang dibutuhkan
 install_dependensi() {
   echo "[+] Sedang menginstal dependensi..."
+
   # Dependensi yang dibutuhkan.
-  sudo apt install -y lolcat vsftpd openssl bind9 net-tools &> /dev/null
+  sudo apt install -y lolcat vsftpd openssl net-tools &> /dev/null
+  # Cek jika parameter -d diberikan, maka install bind9 juga.
+  if [ -n "$DOMAIN" ]; then
+    sudo apt install -y bind9 bind9utils bind9-doc dnsutils &> /dev/null
+  fi
+  
   # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
   sudo ln -sf /usr/games/lolcat /usr/bin/lolcat
-  wait # Tunggu hingga proses instalasi dependensi selesai.
   echo "[+] Dependensi berhasil diinstal"
 }
 
-# Fungsi banner untuk menampilkan informasi opsi-opsi yang tersedia pada program
-banner() {
+# Fungsi 'show_banner' untuk menampilkan informasi opsi-opsi yang tersedia pada program
+show_banner() {
   desain_banner="
            ______ _______ _____  
           |  ____|__   __|  __ \ 
@@ -63,10 +69,12 @@ v1.0 | Kelompok 4 - TMJ 4B
 "
 
   # Cek apakah lolcat terinstall.
-  is_lolcat_installed=$(dpkg -l | grep lolcat &> /dev/null)
+  dpkg -l | grep lolcat &> /dev/null
   # Jika lolcat terinstall, maka tampilkan banner dengan warna random.
   [[ $? -ne 0 ]] && (echo "$desain_banner") || (echo "$desain_banner" | lolcat)
+}
 
+show_help() {
   echo "----------------------------------------------------"
   echo -e "Usage: sudo bash safetp.sh -l \$args [OPTIONS...]\n
   Options:\n
@@ -75,15 +83,53 @@ v1.0 | Kelompok 4 - TMJ 4B
     -p, --port: Port untuk server FTP (default: 21),\n
     -ip, --ip-address: Alamat IP untuk DNS server,\n
     -d, --domain: Nama domain untuk DNS server,\n
-    -h, --help: Menampilkan opsi yang tersedia\n"
+    -h, --help: Menampilkan opsi yang tersedia."
   echo "----------------------------------------------------"
 }
 
-configure_ftp() {
+# Fungsi untuk menghapus direktori dan file konfigurasi FTP server
+cleanup_ftp() {
+  # Clean up semua folder dan file terkait.
+  echo "[+] Clean up konfigurasi FTP server..."
+  sudo rm -rf /etc/safetp /etc/vsftpd.conf /etc/vsftpd.conf.default /etc/ssl/certs/safetp.crt /etc/ssl/private/safetp.key
+
+  # Hapus semua user FTP.
+  echo "[+] Menghapus semua user FTP..."
+  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+    sudo userdel -r "$username" 2>/dev/null
+  done
+
+  # Mengonfigurasi ulang FTP server.
+  configure_secure_ftp
+}
+
+# Fungsi untuk menghapus direktori dan file konfigurasi DNS server
+cleanup_dns() {
+  # Clean up semua folder dan file terkait.
+  echo "[+] Clean up konfigurasi DNS server..."
+  sudo rm -rf /etc/bind /var/cache/bind
+
+  # Menghapus baris pertama pada /etc/resolv.conf jika ada 'nameserver'.
+  echo "[+] Menghapus baris pertama pada /etc/resolv.conf jika mengandung 'nameserver'..."
+  grep -q '^nameserver' /etc/resolv.conf
+  if [ $? -eq 0 ]; then
+    sudo sed -i '1d' /etc/resolv.conf
+    echo "[+] Baris pertama yang mengandung 'nameserver' telah dihapus"
+  else
+    echo "[-] Tidak ada 'nameserver' pada baris pertama"
+  fi
+
+  # Mengonfigurasi ulang DNS server.
+  configure_dns
+}
+
+configure_secure_ftp() {
   # 1. Cek service vsftpd apakah sudah berjalan atau belum.
   echo "[+] Mengecek status service FTP server..."
   sleep 0.5 # tunggu 0.5 detik.
-  is_vsftpd_running=$(netstat -tanp | grep :21 &> /dev/null)
+  # Cek port 21 apakah sudah terbuka atau belum.
+  netstat -tanp | grep :21 &> /dev/null 
+  # Jika port 21 sudah terbuka, maka service FTP server sudah berjalan.
   if [ $? -eq 0 ]; then
     echo "[+] Service FTP server sudah berjalan"
   else
@@ -99,14 +145,14 @@ configure_ftp() {
   sleep 0.5 # tunggu 0.5 detik.
 
   # 3. Backup file konfigurasi vsftpd.
-  echo "[+] Backup file konfigurasi FTP server..."
+  echo "[+] Melakukan backup file konfigurasi FTP server..."
   sudo mv -f /etc/vsftpd.conf /etc/vsftpd.conf.default
   sleep 0.5 # tunggu 0.5 detik.
 
   # 4. Mengkonfigurasi FTP server.
   echo "[+] Membuat file konfigurasi default FTP server..."
   # Membuat konfigurasi FTP server.
-  sudo cat <<EOL | sudo tee -a /etc/vsftpd.conf > /dev/null
+  sudo cat <<EOL | sudo tee /etc/vsftpd.conf > /dev/null
 ###########################################
 # CREATED AUTOMATICALLY BY SAFETP PROGRAM #
 ###########################################
@@ -170,7 +216,7 @@ EOL
       # Ubah kepemilikan direktori tersebut menjadi user yang bersangkutan.
       sudo chown -R "$username:$username" "/home/$username/$DIRECTORY"
       # Konfigurasi direktori 'user_conf' untuk tiap user.
-      echo "local_root=/home/$username/$DIRECTORY" | sudo tee -a /etc/safetp/user_conf/$username > /dev/null
+      echo "local_root=/home/$username/$DIRECTORY" | sudo tee /etc/safetp/user_conf/$username > /dev/null
       # Set permission agar file tidak bisa dimodifikasi oleh user lain.
       sudo chmod 644 "/etc/safetp/user_conf/$username"
     # Jika parameter -dir tidak diberikan, maka direktori default adalah '$HOME/ftp'.
@@ -180,7 +226,7 @@ EOL
       # Ubah kepemilikan direktori tersebut menjadi user yang bersangkutan.
       sudo chown -R "$username:$username" "/home/$username/ftp"
       # Konfigurasi direktori 'user_conf' untuk tiap user.
-      echo "local_root=/home/$username/ftp" | sudo tee -a /etc/safetp/user_conf/$username > /dev/null
+      echo "local_root=/home/$username/ftp" | sudo tee /etc/safetp/user_conf/$username > /dev/null
       # Set permission agar file tidak bisa dimodifikasi oleh user lain.
       sudo chmod 644 "/etc/safetp/user_conf/$username"
     fi
@@ -190,7 +236,7 @@ EOL
   [[ -n "$PORT" ]] && sudo sed -i "s/^listen_port=.*/listen_port=$PORT/" /etc/vsftpd.conf
 
   # Parameter -l diberikan, maka ganti 'userlist_file' dan 'chroot_list_file' pada konfigurasi FTP server.
-  if [[ -n "$USERLIST" ]]; then
+  if [ -n "$USERLIST" ]; then
     sudo sed -i "s|^userlist_file=.*|userlist_file=/etc/safetp/allowed|" /etc/vsftpd.conf
     sudo sed -i "s|^chroot_list_file=.*|chroot_list_file=/etc/safetp/allowed|" /etc/vsftpd.conf
   fi
@@ -198,78 +244,301 @@ EOL
 
   # 5. Membuat self-signed SSL certificate untuk keamanan FTP server.
   echo "[+] Konfigurasi SSL certificate untuk FTPS..."
-  sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/ssl/private/safetp.key -out /etc/ssl/certs/safetp.crt -subj "/C=ID/ST=Indonesia/L=/O=/OU=/CN=/emailAddress=/" &> /dev/null # Generate self-signed SSL certificate untuk 1 tahun.
+  sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/ssl/private/safetp.key -out /etc/ssl/certs/safetp.crt -subj "/C=ID/ST=Indonesia/L=/O=/OU=/CN=$DOMAIN/emailAddress=/" &> /dev/null # Generate self-signed SSL certificate untuk 1 tahun.
   sleep 0.5 # tunggu 0.5 detik.
+  echo "[+] SSL certificates berhasil dibuat"
 
   # 6. Restart layanan FTP server.
   echo "[+] Memulai ulang service FTP server..."
   sudo systemctl restart -q vsftpd.service
+  # Cek apakah service FTP server sudah berjalan atau belum.
+  if [ $? -ne 0 ]; then
+    echo "[-] Gagal memulai ulang service FTP server!"
+    cleanup_ftp
+    exit 1
+  fi
   sudo systemctl enable -q vsftpd.service
   sleep 1 # tunggu 1 detik.
 
   # 7. Menampilkan notif jika konfigurasi FTP server selesai.
-  echo -e "\e[32m[OK] Konfigurasi FTP server selesai\e[1m"
-  echo -e "\e[32m[OK] FTP server dapat diakses melalui port: ${PORT:-21}\e[1m"
+  echo -e "[+] Konfigurasi FTP server selesai"
   sleep 0.5 # tunggu 0.5 detik.
+  echo "----------------------------------------------------"
 }
 
 # Fungsi untuk mengkonfigurasi DNS server.
-#configure_dns() {
-#}
+configure_dns() {
+  # IP address untuk DNS server.
+  local ip_address=$(sudo hostname -I | awk '{print $1}')
 
-main() {
-  # Array semua dependensi yang
-  dependensi=(lolcat vsftpd openssl bind9 net-tools)
+  # Mendapatkan oktet terakhir (IP Host) dari alamat IP saat ini.
+  local last_ip=$(echo "$ip_address" | awk -F. '{print $4}')
 
-  # Cek apakah semua dependensi di atas sudah terinstall atau belum.
-  dependensi_missing=false
-  for dep in "${dependensi[@]}"; do
-    is_installed=$(dpkg -l | grep "$dep" &> /dev/null)
-    # Jika belum terinstall, maka jalankan fungsi 'initial_setup' dan 'install_dependensi'.
-    if [ $? -ne 0 ]; then
-      dependensi_missing=true
-      break # Keluar dari perulangan.
-    fi
-  done
+  # Membalikkan alamat IP (reverse).
+  local reverse_ip_address=$(echo "$ip_address" | awk -F. '{print $3"."$2"."$1".in-addr.arpa"}')
 
-  # Jalankan fungsi 'initial_setup' dan 'install_dependensi' jika ada dependensi yang belum terinstall.
-  [ "$dependensi_missing" = true ] && { initial_setup; install_dependensi; }
+  # Konfigurasi file forward '/etc/bind/db.forward'.
+  echo "[+] Melakukan konfigurasi pada file 'db.forward'..."
+  sudo cat <<EOL | sudo tee /etc/bind/db.forward > /dev/null
+;###########################################
+;# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
+;###########################################
+;
+; BIND data file for local loopback interface
+;
+\$TTL    604800
+@       IN      SOA     $DOMAIN. root.$DOMAIN. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      nsx1.$DOMAIN.
+@       IN      NS      nsx2.$DOMAIN.
+@       IN      A       $ip_address
+@       IN      AAAA    ::1
+nsx1    IN      A       $ip_address
+nsx2    IN      A       $ip_address
+ftp     IN      A       $ip_address
+EOL
+  sleep 1 # Tunggu 1 detik.
 
-  # Parse command line arguments
-  if [ $# -eq 0 ]; then
-    banner
+  # Konfigurasi file reverse '/etc/bind/db.reverse'.
+  echo "[+] Melakukan konfigurasi pada file 'db.reverse'..."
+  sudo cat <<EOL | sudo tee /etc/bind/db.reverse > /dev/null
+;###########################################
+;# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
+;###########################################
+;
+; BIND reverse data file for local loopback interface
+;
+\$TTL    604800
+@       IN      SOA     $DOMAIN. root.$DOMAIN. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      nsx1.$DOMAIN.
+@       IN      NS      nsx2.$DOMAIN.
+$last_ip      IN      PTR     $DOMAIN.
+$last_ip      IN      PTR     ftp.$DOMAIN.
+EOL
+  sleep 1 # Tunggu 1 detik.
+
+  echo "[+] Backup file 'named.conf.options'..."
+  sudo mv -f /etc/bind/named.conf.options /etc/bind/named.conf.options.default
+
+  # Konfigurasi file bind9 options '/etc/bind/named.conf.options'.
+  echo "[+] Melakukan konfigurasi pada file 'named.conf.options'..."
+  sudo cat <<EOL | sudo tee /etc/bind/named.conf.options > /dev/null
+//###########################################
+//# CREATED AUTOMATICALLY BY SAFETP PROGRAM #
+//###########################################
+options {
+  directory "/var/cache/bind";
+
+  // If there is a firewall between you and nameservers you want
+  // to talk to, you may need to fix the firewall to allow multiple
+  // ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+  // If your ISP provided one or more IP addresses for stable
+  // nameservers, you probably want to use them as forwarders.
+  // Uncomment the following block, and insert the addresses replacing
+  // the all-0's placeholder.
+
+  forwarders {
+    $ip_address;
+  };
+
+  //========================================================================
+  // If BIND logs error messages about the root key being expired,
+  // you will need to update your keys.  See https://www.isc.org/bind-keys
+  //========================================================================
+  dnssec-validation auto;
+
+  listen-on-v6 { any; };
+};
+EOL
+  sleep 1 # Tunggu 1 detik.
+
+  # Konfigurasi file bind9 local '/etc/bind/named.conf.local'.
+  echo "[+] Melakukan backup file 'named.conf.local'..."
+  sudo mv -f /etc/bind/named.conf.local /etc/bind/named.conf.local.default
+
+  echo "[+] Melakukan konfigurasi pada file 'named.conf.local'..."
+  sudo cat <<EOL | sudo tee /etc/bind/named.conf.local > /dev/null
+//
+// Do any local configuration here
+//
+
+// Consider adding the 1918 zones here, if they are not used in your
+// organization
+//include "/etc/bind/zones.rfc1918";
+
+zone "$DOMAIN" {
+  type master;
+  file "/etc/bind/db.forward";
+};
+
+zone "$reverse_ip_address" {
+  type master;
+  file "/etc/bind/db.reverse";
+};
+EOL
+  sleep 1 # Tunggu 1 detik.
+
+  # Cek konfigurasi file 'db.forward'.
+  echo "[+] Cek konfigurasi file 'db.forward'..."
+  sudo named-checkzone "$DOMAIN" /etc/bind/db.forward &> /dev/null
+  # Jika ada error, maka tampilkan pesan error lalu exit.
+  if [ $? -ne 0 ]; then
+    echo "[-] Ada error pada konfigurasi file 'db.forward'!"
+    exit 1
+  else
+    echo "[+] Konfigurasi file 'db.forward' OK"
+    sleep 0.5 # Tunggu 0.5 detik.
+  fi
+
+  # Cek konfigurasi file 'db.reverse'.
+  echo "[+] Cek konfigurasi file 'db.reverse'..."
+  # Perintah untuk mengecek apakah konfigurasi DNS server sudah benar atau belum.
+  sudo named-checkzone "$ip_address" /etc/bind/db.reverse &> /dev/null
+  # Jika ada error, maka tampilkan pesan error lalu exit.
+  if [ $? -ne 0 ]; then
+    echo "[-] Ada error pada konfigurasi DNS server!"
+    exit 1
+  else
+    echo "[+] Konfigurasi DNS server selesai"
+    sleep 0.5 # Tunggu 0.5 detik.
+  fi
+
+  # Menyalakan ulang service bind9.
+  echo "[+] Menyalakan ulang service bind9..."
+  sudo systemctl restart -q bind9.service
+  sleep 1 # Tunggu 1 detik.
+
+  # Cek service bind9 apakah sudah berhasil running atau belum.
+  echo "[+] Check service bind9 running..."
+  # Jika sudah, maka tambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
+  if [ $? -ne 0 ]; then
+    echo "[-] Gagal memulai ulang service DNS server!"
+    cleanup_dns
     exit 1
   fi
 
+  echo "[+] Service bind9 berhasil running..."
+  # Menambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
+  echo "[+] Menambahkan alamat IP saat ini ke file '/etc/resolv.conf'..." 
+  sudo sed -i "1s/^/nameserver $ip_address\n/" /etc/resolv.conf
+  sleep 0.5 # Tunggu 0.5 detik.
+  echo "[+] Konfigurasi DNS server selesai..."
+  echo "----------------------------------------------------"
+  sleep 0.5 # tunggu 0.5 detik.
+}
+
+main() {
+  # Cek apakah user menjalankan program ini sebagai root atau tidak.
+  if [ "$EUID" -ne 0 ]; then
+    show_banner
+    show_help
+    echo -e "\e[31m[-] Tolong jalankan program ini sebagai root!\e[1m"
+    exit 1
+  fi
+
+  # Menampilkan banner jika user memasukkan parameter -h atau --help atau tidak memasukkan parameter apapun.
+  if [ $# -eq 0 ]; then
+    show_banner
+    show_help
+    exit 0
+  fi
+
   # Lakukan perulangan untuk membaca parameter yang diberikan.
-  while [[ "$#" -gt 0 ]]; do
-    # Cek parameter yang diberikan.
+  while [ "$#" -gt 0 ]; do
     case $1 in
-      -l|--userlist) [[ -n "$USERLIST" ]] && { echo "Duplicate parameter: $1"; exit 1; }; USERLIST="$2"; shift ;;
-      -dir|--directory) [[ -n "$DIRECTORY" ]] && { echo "Duplicate parameter: $1"; exit 1; }; DIRECTORY="$2"; shift ;;
-      -p|--port) [[ -n "$PORT" ]] && { echo "Duplicate parameter: $1"; exit 1; }; PORT="$2"; shift ;;
-      -ip|--ip-address) [[ -n "$IP_ADDRESS" ]] && { echo "Duplicate parameter: $1"; exit 1; }; IP_ADDRESS="$2"; shift ;;
-      -d|--domain) [[ -n "$DOMAIN" ]] && { echo "Duplicate parameter: $1"; exit 1; }; DOMAIN="$2"; shift ;;
-      -h|--help) banner; exit 0 ;;
-      *) echo "Unknown parameter passed: $1"; banner; exit 1 ;;
+      -l|--userlist)
+      if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
+        USERLIST="$2"
+        shift
+      else
+        show_banner
+        show_help
+        echo -e "\e[31m[-] Opsi $1 memerlukan argumen yang valid\e[0m"
+        exit 1
+      fi
+      ;;
+      -dir|--directory)
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
+          DIRECTORY="$2"
+          shift
+        else
+          show_banner
+          show_help
+          echo -e "\e[31m[-] Opsi $1 memerlukan argumen yang valid\e[0m"
+          exit 1
+        fi
+        ;;
+      -p|--port)
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
+          PORT="$2"
+          shift
+        else
+          show_banner
+          show_help
+          echo -e "\e[31m[-] Opsi $1 memerlukan argumen yang valid\e[0m"
+          exit 1
+        fi
+        ;;
+      -d|--domain)
+        if [ -n "$2" ] && [ "${2:0:1}" != "-" ]; then
+          DOMAIN="$2"
+          shift
+        else
+          show_banner
+          show_help
+          echo -e "\e[31m[-] Opsi $1 memerlukan argumen yang valid\e[0m"
+          exit 1
+        fi
+        ;;
+      -h|--help)
+        show_banner
+        show_help
+        exit 0
+        ;;
+      *)
+        show_banner
+        show_help
+        echo -e "\e[31m[-] Opsi $1 TIDAK VALID!\e[1m"
+        exit 1
+        ;;
     esac
     shift
   done
 
-  # Cek apakah parameter -l sudah diberikan atau belum.
-  if [[ -z "$USERLIST" ]]; then
-    echo "[-] File userlist bersifat WAJIB!"
-    banner
-    exit 1
-  fi
+  # Initial setup terlebih dahulu untuk cek internet dan update repo.
+  initial_setup
 
-  # Menjalankan fungsi 'configure_ftp'.
-  configure_ftp
+  # Install dependensi yang dibutuhkan.
+  install_dependensi
 
-  # Menjalankan fungsi 'configure_dns' jika parameter -ip dan -d diberikan.
-  if [[ -n "$IP_ADDRESS" && -n "$DOMAIN" ]]; then
+  # Panggil fungsi 'configure_secure_ftp'.
+  configure_secure_ftp
+
+  # Variabel untuk mendapatkan IP address saat ini.
+  local ip_address=$(hostname -I | awk '{print $1}')
+  # Cek jika parameter -d diberikan, maka jalankan fungsi 'configure_dns'.
+  if [ -n "$DOMAIN" ]; then
+    # Panggil fungsi 'configure_dns'
     configure_dns
+
+    echo -e "\e[34m[+] Silahkan tambahkan alamat IP: $ip_address ke file '/etc/resolv.conf' PC client, atau jalankan script 'dns_config.sh' di PC client!\e[1m"
+    echo -e "\e[32m[+] Selamat! akses FTP server menggunakan domain: ftp.${DOMAIN} di port: ${PORT:-21}\e[1m"
+  else
+    echo -e "\e[32m[+] Silahkan akses FTP server menggunakan alamat IP: $ip_address di port: ${PORT:-21}\e[1m"
   fi
+  echo -e "\e[32m[OK] Instalasi dan konfigurasi selesai!\e[1m"
 }
 
 # Jalankan fungsi main
