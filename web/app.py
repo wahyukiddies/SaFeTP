@@ -10,8 +10,11 @@ def index():
 @app.route('/get_users')
 def get_users():
     try:
-        group_id = subprocess.check_output("getent group safetp | cut -d: -f3", shell=True).decode('utf-8').strip()
-        users = subprocess.check_output(f"getent group {group_id} | awk -F: '{{print $4}}' | tr ',' '\n'", shell=True).decode('utf-8').split()
+        # Fetch the users from the safetp group
+        group_info = subprocess.check_output("getent group safetp", shell=True).decode('utf-8').strip()
+        users = group_info.split(':')[3].split(',')
+        
+        # Prepare the user list for the response
         user_list = [{'id': i + 1, 'name': user} for i, user in enumerate(users)]
     except subprocess.CalledProcessError:
         user_list = []
