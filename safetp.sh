@@ -541,6 +541,14 @@ main() {
     shift
   done
 
+  # Pastikan parameter USERLIST diberikan.
+  if [ -z "$USERLIST" ]; then
+    show_banner
+    show_help
+    echo -e "\e[31m[-] Parameter -l / --userlist wajib diberikan!\e[1m"
+    exit 1
+  fi
+
   # Initial setup terlebih dahulu untuk cek internet dan update repo.
   initial_setup
 

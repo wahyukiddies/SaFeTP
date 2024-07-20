@@ -44,16 +44,6 @@ if [ $(systemctl list-unit-files | grep -w bind9.service | awk '{print $1}') == 
   sudo rm -rf /etc/bind # Hapus folder konfigurasi bind9
   sudo rm -rf /var/cache/bind # Hapus folder konfigurasi cache bind9
 
-  # Dapatkan kata 'nameserver' pada file '/etc/resolv.conf'.
-  grep -q '^nameserver' /etc/resolv.conf
-  # Jika ada, hapus baris pertama yang mengandung 'nameserver'.
-  if [ $? -eq 0 ]; then
-    sudo sed -i '1d' /etc/resolv.conf
-    echo "[+] Baris pertama yang mengandung 'nameserver' telah dihapus"
-  else
-    echo "[-] Tidak ada 'nameserver' pada baris pertama"
-  fi
-
   sleep 0.5 # Tunggu 0.5 detik.
   echo "[+] Paket vsftpd dan bind9 berhasil dihapus"
 else

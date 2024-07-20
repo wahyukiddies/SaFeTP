@@ -38,7 +38,7 @@ fi
 
 # 4. Menambahkan alamat IP DNS server ke file 'resolv.conf' 
 echo "[+] Sedang mengkonfigurasi file 'resolv.conf'..."
-echo "DNS=$1" | sudo tee -a /etc/systemd/resolved.conf
+echo "DNS=$1" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
 sudo systemctl restart systemd-resolved
 sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
 sleep 1 # Tunggu 1 detik.
