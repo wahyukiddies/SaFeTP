@@ -55,4 +55,5 @@ def delete_user():
     return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0')
+
