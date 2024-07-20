@@ -11,7 +11,7 @@ def index():
 def get_users():
     try:
         group_id = subprocess.check_output("getent group safetp | cut -d: -f3", shell=True).decode('utf-8').strip()
-        users = subprocess.check_output(f"getent passwd | grep {group_id} | cut -d: -f1", shell=True).decode('utf-8').split()
+        users = subprocess.check_output(f"getent group {group_id} | awk -F: '{{print $4}}' | tr ',' '\n'", shell=True).decode('utf-8').split()
         user_list = [{'id': i + 1, 'name': user} for i, user in enumerate(users)]
     except subprocess.CalledProcessError:
         user_list = []
@@ -55,5 +55,5 @@ def delete_user():
     return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', debug=True)
 
