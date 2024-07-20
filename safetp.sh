@@ -29,8 +29,8 @@ initial_setup() {
   is_connected=$(ping -c 3 google.com &> /dev/null)
   if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
-    echo "[+] Update dan upgrade repositori sistem..."
-    (sudo apt update && sudo apt upgrade -y) &> /dev/null
+    echo "[+] Update repositori sistem..."
+    (sudo apt update) &> /dev/null
     echo "[+] Repositori sistem berhasil diperbarui"
   else
     echo "[-] Tidak ada koneksi internet!"
@@ -43,7 +43,7 @@ initial_setup() {
 install_dependensi() {
   echo "[+] Sedang menginstal dependensi..."
   # Dependensi yang dibutuhkan.
-  sudo apt install -y lolcat nmap vsftpd openssl bind9 net-tools &> /dev/null
+  sudo apt install -y lolcat vsftpd openssl bind9 net-tools &> /dev/null
   # Buat simbolik link tool lolcat ke /usr/bin/lolcat (bisa juga dengan copy).
   sudo ln -sf /usr/games/lolcat /usr/bin/lolcat
   wait # Tunggu hingga proses instalasi dependensi selesai.
@@ -111,6 +111,7 @@ configure_ftp() {
 # CREATED AUTOMATICALLY BY SAFETP PROGRAM #
 ###########################################
 
+# Konfigurasi dasar FTP server.
 listen=YES
 listen_ipv6=NO
 listen_port=${PORT:-21}
@@ -122,6 +123,8 @@ xferlog_enable=YES
 log_ftp_protocol=YES
 dirmessage_enable=YES
 delete_failed_uploads=YES
+use_localtime=YES
+utf8_filesystem=YES
 
 # Konfigurasi chroot jail pada setiap user FTP yang diizinkan.
 chroot_list_enable=YES
@@ -164,10 +167,8 @@ EOL
   group_id=$(getent group safetp | cut -d: -f3)
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
-  grep -v '^\s*$' /etc/safetp/allowed | while IFS= read -r username; do
-    # Buat user baru dengan group 'safetp' dan shell '/bin/bash'.
-    sudo useradd -G safetp -s /bin/bash -m -p '' "$username"
-
+  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+    sudo useradd -g safetp -G sudo -s /bin/bash -m -p '' "$username"
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
       # Buat direktori sesuai yang diinputkan pada parameter pada direktori /home/$username.
@@ -224,7 +225,7 @@ EOL
 
 main() {
   # Array semua dependensi yang
-  dependensi=(lolcat nmap vsftpd openssl bind9 net-tools)
+  dependensi=(lolcat vsftpd openssl bind9 net-tools)
 
   # Cek apakah semua dependensi di atas sudah terinstall atau belum.
   dependensi_missing=false
