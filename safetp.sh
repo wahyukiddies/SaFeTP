@@ -208,7 +208,16 @@ EOL
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
-    sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
+    # Perintah untuk mengecek apakah user sudah ada atau belum dengan melihat id-nya.
+    id -u "$username" &> /dev/null
+    # Jika user tidak ditemukan, maka buat user tersebut.
+    if [ $? -ne 0 ]; then
+      sudo useradd -G sudo -s /bin/bash -m -p '' "$username"
+      echo "[+] User $username berhasil ditambahkan."
+    else
+      echo "[-] User $username sudah ada."
+    fi
+
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
       # Buat direktori sesuai yang diinputkan pada parameter pada direktori /home/$username.
@@ -243,7 +252,7 @@ EOL
   sleep 1 # tunggu 1 detik.
 
   # 5. Membuat self-signed SSL certificate untuk keamanan FTP server.
-  echo "[+] Konfigurasi SSL certificate untuk FTPS..."
+  echo "[+] Konfigurasi SSL certificate untuk FTPES..."
   # Jika parameter -d dipassing, maka gunakan "ftp.$DOMAIN".
   if [ -n "$DOMAIN" ]; then
     CN="ftp.$DOMAIN"
@@ -445,7 +454,9 @@ EOL
   echo "[+] Service bind9 berhasil running..."
   # Menambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
   echo "[+] Menambahkan alamat IP saat ini ke file '/etc/resolv.conf'..." 
-  sudo sed -i "1s/^/nameserver $ip_address\n/" /etc/resolv.conf
+  echo "DNS=$1" | sudo tee -a /etc/systemd/resolved.conf > /dev/null
+  sudo systemctl restart -q systemd-resolved
+  sudo ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
   sleep 0.5 # Tunggu 0.5 detik.
   echo "[+] Konfigurasi DNS server selesai..."
   echo "----------------------------------------------------"
@@ -461,7 +472,7 @@ main() {
     exit 1
   fi
 
-  # Menampilkan banner jika user memasukkan parameter -h atau --help atau tidak memasukkan parameter apapun.
+  # Menampilkan banner jika user tidak memasukkan parameter apapun.
   if [ $# -eq 0 ]; then
     show_banner
     show_help
