@@ -207,14 +207,16 @@ EOL
   sudo mkdir -pm755 /etc/safetp/user_conf
 
   # Create group 'safetp' untuk user FTP.
-  sudo groupadd safetp
+  if ! getent group safetp &> /dev/null; then
+    sudo groupadd safetp
+  fi
 
   # Get the group ID of 'safetp' group.
   group_id=$(getent group safetp | cut -d: -f3)
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
-    sudo useradd -g safetp -G sudo -s /bin/bash -m -p '' "$username"
+    sudo useradd -G sudo,safetp -s /bin/bash -m -p '' "$username"
     # Buat direktori sesuai dengan inputan parameter -dir.
     if [ -n "$DIRECTORY" ]; then
       # Buat direktori sesuai yang diinputkan pada parameter pada direktori /home/$username.
