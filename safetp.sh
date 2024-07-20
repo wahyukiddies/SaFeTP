@@ -244,7 +244,19 @@ EOL
 
   # 5. Membuat self-signed SSL certificate untuk keamanan FTP server.
   echo "[+] Konfigurasi SSL certificate untuk FTPS..."
-  sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout /etc/ssl/private/safetp.key -out /etc/ssl/certs/safetp.crt -subj "/C=ID/ST=Indonesia/L=/O=/OU=/CN=$DOMAIN/emailAddress=/" &> /dev/null # Generate self-signed SSL certificate untuk 1 tahun.
+  # Jika parameter -d dipassing, maka gunakan "ftp.$DOMAIN".
+  if [ -n "$DOMAIN" ]; then
+    CN="ftp.$DOMAIN"
+  # Jika tidak, maka gunakan alamat IP saat ini.
+  else
+    CN="$ip_address"
+  fi
+
+  # Generate self-signed SSL certificate untuk 1 tahun.
+  sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
+    -keyout /etc/ssl/private/safetp.key \
+    -out /etc/ssl/certs/safetp.crt \
+    -subj "/C=ID/ST=Indonesia/L=/O=/OU=/CN=$CN/emailAddress=/" &> /dev/null 
   sleep 0.5 # tunggu 0.5 detik.
   echo "[+] SSL certificates berhasil dibuat"
 
@@ -268,6 +280,7 @@ EOL
 
 # Fungsi untuk mengkonfigurasi DNS server.
 configure_dns() {
+  echo "[+] Memulai konfigurasi DNS server..."
   # IP address untuk DNS server.
   local ip_address=$(sudo hostname -I | awk '{print $1}')
 
