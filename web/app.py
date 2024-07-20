@@ -12,10 +12,10 @@ def get_users():
     try:
         # Fetch the users from the safetp group
         group_info = subprocess.check_output("getent group safetp", shell=True).decode('utf-8').strip()
-        users = group_info.split(':')[3].split(',')
-        
-        # Prepare the user list for the response
-        user_list = [{'id': i + 1, 'name': user} for i, user in enumerate(users)]
+        # Split the group information to get the list of users
+        users = group_info.split(':')[3]
+        # Split users by commas if there are any users, otherwise return an empty list
+        user_list = [{'id': i + 1, 'name': user} for i, user in enumerate(users.split(','))] if users else []
     except subprocess.CalledProcessError:
         user_list = []
 
