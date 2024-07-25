@@ -60,9 +60,23 @@ class UserList(Resource):
       return {'message': 'Pengguna sudah ada'}, 400
     users.append(data['username'])
     write_allowed_users_file(users)
-    # Buat pengguna dalam sistem dan set password
+    # Buat pengguna baru di ubuntu server sesuai inputan yang diberikan.
     os.system(f'sudo useradd -G sudo -m -s /bin/bash {data["username"]}')
+    
+    # Set password untuk pengguna baru (WAJIB).
     os.system(f'echo "{data["username"]}:{data["password"]}" | sudo chpasswd')
+    
+    # Buat direktori default 'ftp' di /home/$username.
+    os.system(f'sudo mkdir -pm700 /home/{data["username"]}/ftp')
+    
+    # Ubah kepemilikan direktori tersebut menjadi user yang bersangkutan.
+    os.system(f'sudo chown -R "{data["username"]}:{data["username"]}" /home/{data["username"]}/ftp')
+    
+    # Konfigurasi direktori 'user_conf' untuk tiap user.
+    os.system(f'echo "local_root=/home/{data["username"]}/ftp" | sudo tee /etc/safetp/user_conf/{data["username"]} > /dev/null')
+    
+    # Set permission agar file tidak bisa dimodifikasi oleh user lain.
+    os.system(f'sudo chmod 644 "/etc/safetp/user_conf/{data["username"]}"')
     return {'message': 'Pengguna dibuat'}, 201
 
 # API endpoint untuk mengedit dan menghapus FTP user.

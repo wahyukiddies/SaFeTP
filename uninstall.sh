@@ -30,7 +30,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # 3. Uninstall program vsftpd dan bind9 (jika ada).
-if [ $(systemctl list-unit-files | grep -w bind9.service | awk '{print $1}') == "bind9.service" ]; then
+bind9_service=$(systemctl list-unit-files | grep -w bind9.service | awk '{print $1}')
+if [ "$bind9_service" == "bind9.service" ]; then
   # Stop service terlebih dahulu.
   echo "[+] Menghentikan service vsftpd dan bind9 terlebih dahulu"
   sudo systemctl stop -q vsftpd.service
@@ -63,8 +64,8 @@ fi
 # 4. Hapus semua user FTP.
 echo "[+] Menghapus semua user FTP"
 grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
-  sudo groupdel -f $username 2>/dev/null
-  sudo userdel -r $username 2>/dev/null
+  sudo groupdel -f $username &> /dev/null
+  sudo userdel -r $username &> /dev/null
 done
 sleep 0.5 # Tunggu 0.5 detik.
 echo "[+] Semua user FTP berhasil dihapus"

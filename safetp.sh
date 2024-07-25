@@ -176,8 +176,8 @@ EOL
   # Ganti permission allowed file agar bisa diedit oleh python nantinya.
   sudo chmod 777 /etc/safetp/allowed
 
-  # Buat direktori untuk user_conf.
-  sudo mkdir -pm755 /etc/safetp/user_conf
+  # Buat direktori 'user_conf' dengan all permission (rwx).
+  sudo mkdir -pm777 /etc/safetp/user_conf
 
   # Buat user dari allowed file dan direktori untuk tiap user tersebut.
   grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
@@ -551,6 +551,7 @@ EOL
     # Menyalakan ulang service Nginx.
     echo "[+] Menyalakan ulang service Nginx"
     sudo systemctl restart -q nginx.service
+    sudo systemctl enable -q nginx.service
     sleep 1 # tunggu 1 detik.
 
     echo "[+] Proses deploy SaFeTP Flask App berhasil!"
@@ -572,8 +573,8 @@ cleanup_ftp() {
   # Hapus semua user FTP.
   echo "[+] Menghapus semua user FTP..."
   grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
-    sudo groupdel -f $username 2>/dev/null
-    sudo userdel -r "$username" 2>/dev/null
+    sudo groupdel -f "$username" &> /dev/null
+    sudo userdel -r "$username" &> /dev/null
   done
 
   # Mengonfigurasi ulang FTP server.
