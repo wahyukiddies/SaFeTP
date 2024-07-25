@@ -108,7 +108,7 @@ configure_secure_ftp() {
   else
     echo "[-] Service FTP server belum berjalan"
     sudo systemctl start -q vsftpd.service
-    sleep 1 # tunggu 1 detik.
+    sleep 1 # tunggu 1 detik
     echo "[+] Service FTP server berhasil dijalankan"
   fi
 
@@ -445,7 +445,6 @@ deploy_web() {
   # 1. Pindahkan folder current web app ke /var/www/
   echo "[+] Memindahkan folder web app ke direktori '/var/www/'"
   local ip_address=$(hostname -I | awk '{print $1}')
-  local WEB_APP_PATH="$(pwd)/web"
   sudo cp -rf $WEB_APP_PATH /var/www/
 
   # 2. Ganti kepemilikan folder web app
