@@ -444,7 +444,6 @@ deploy_web() {
 
   # 1. Pindahkan folder current web app ke /var/www/
   echo "[+] Memindahkan folder web app ke direktori '/var/www/'"
-  local ip_address=$(hostname -I | awk '{print $1}')
   local WEB_APP_PATH="$(pwd)/web"
   sudo cp -rf $WEB_APP_PATH /var/www/
 
