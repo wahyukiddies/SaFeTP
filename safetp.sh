@@ -32,7 +32,7 @@ initial_setup() {
   echo "----------------------------------------------------"
   echo "[+] Mengecek koneksi internet..."
   # Perintah untuk mengecek koneksi internet.
-  ping -c 3 google.com &> /dev/null
+  ping -c 3 1.1.1.1 &> /dev/null
   if [ $? -eq 0 ]; then
     echo "[+] Koneksi internet OK"
     echo "[+] Update repositori sistem..."
@@ -412,7 +412,7 @@ EOL
       echo "[-] Ada error pada konfigurasi DNS server!"
       exit 1
     else
-      echo "[+] Konfigurasi file 'db.forward' OK"
+      echo "[+] Konfigurasi file 'db.reverse' OK"
       echo "[+] Konfigurasi DNS server selesai"
       sleep 0.5 # Tunggu 0.5 detik.
     fi
@@ -420,11 +420,7 @@ EOL
     # Menyalakan ulang service bind9.
     echo "[+] Menyalakan ulang service bind9..."
     sudo systemctl restart -q bind9.service
-    sleep 1 # Tunggu 1 detik.
-
-    # Cek service bind9 apakah sudah berhasil running atau belum.
-    echo "[+] Check service bind9 running..."
-    # Jika sudah, maka tambahkan alamat IP saat ini ke file resolv.conf pada baris pertama.
+    
     if [ $? -ne 0 ]; then
       echo "[-] Gagal memulai ulang service DNS server!"
       cleanup_dns
