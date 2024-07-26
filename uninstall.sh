@@ -61,6 +61,14 @@ else
   echo "[+] Program vsftpd berhasil dihapus"
 fi
 
+# Uninstall grafana, loki, dan promtail.
+sudo systemctl stop -q grafana-server.service
+sudo systemctl stop -q promtail.service
+sudo systemctl stop -q loki.service
+
+echo "[+] Menghapus program grafana, loki, dan promtail"
+(sudo apt autoremove -y grafana loki promtail && sudo apt purge -y grafana loki promtail) &> /dev/null
+
 # 4. Hapus semua user FTP.
 echo "[+] Menghapus semua user FTP"
 grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do

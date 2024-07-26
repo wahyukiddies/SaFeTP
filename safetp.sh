@@ -50,13 +50,31 @@ install_dependensi() {
   echo "[+] Sedang menginstal dependensi..."
 
   # Install paket-paket yang dibutuhkan.
-  sudo apt install -y lolcat vsftpd openssl net-tools nginx python3 python3-pip python3-venv &> /dev/null
+  echo "[+] Menginstal paket-paket yang dibutuhkan..."
+  sudo apt install -y lolcat vsftpd openssl net-tools nginx python3 python3-pip python3-venv apt-transport-https software-properties-common wget &> /dev/null
+  wait
 
   # Install library python untuk running Flask app.
+  echo "[+] Menginstal library python untuk Flask app..."
   pip3 install flask flask-restx &> /dev/null
+  wait
+
+  # Install grafana server enterprise (free btw).
+  echo "[+] Menginstal Grafana free enterprise server..."
+
+  # Add APT repository Grafana ke dalam folder 'sources.list.d'
+  sudo mkdir -p /etc/apt/keyrings/ && wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+
+  # Tambahkan repository Grafana ke dalam file 'grafana.list'
+  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list > /dev/null
+
+  # Update repositori dan install Grafana enterprise server.
+  (sudo apt update && sudo apt install -y grafana-enterprise loki promtail) &> /dev/null
+  wait
 
   # Cek jika parameter -d diberikan, maka install bind9 juga.
   if [ -n "$DOMAIN" ]; then
+    echo "[+] Menginstal bind9 untuk DNS server..."
     sudo apt install -y bind9 bind9utils bind9-doc dnsutils &> /dev/null
   fi
 
@@ -442,9 +460,16 @@ EOL
 deploy_web() {
   echo "[+] Memulai deploy SaFeTP Flask App..."
 
+  local WEB_APP_PATH="$(pwd)/web"
+
+  # Cek apakah folder 'web' ada atau tidak.
+  if [ ! -d "$WEB_APP_PATH" ]; then
+    echo "[-] Folder 'web' tidak ditemukan!"
+    exit 1
+  fi
+
   # 1. Pindahkan folder current web app ke /var/www/
   echo "[+] Memindahkan folder web app ke direktori '/var/www/'"
-  local WEB_APP_PATH="$(pwd)/web"
   sudo cp -rf $WEB_APP_PATH /var/www/
 
   # 2. Ganti kepemilikan folder web app
@@ -480,7 +505,7 @@ deploy_web() {
   # Buat file konfigurasi Nginx untuk web app.
   echo "[+] Membuat file konfigurasi Nginx"
 
-  # Cek aaakah parameter -d diberikan atau tidak.
+  # Cek apakah parameter -d diberikan atau tidak.
   if [ -n "$DOMAIN" ]; then
     # Buat konfigurasi Nginx untuk domain yang diberikan.
     sudo cat <<EOL | sudo tee /etc/nginx/sites-available/safetp_web.conf > /dev/null
@@ -559,6 +584,106 @@ EOL
   echo "----------------------------------------------------"
 }
 
+deploy_grafana_loki() {
+  # Copy file konfigurasi default promtail.
+  echo "[+] Backup file konfigurasi default promtail..."
+  sudo cp -f /etc/promtail/config.yml /etc/promtail/config.yml.default
+
+  # Edit file konfigurasi promtail.
+  echo "[+] Mengedit file konfigurasi promtail..."
+  sudo sed -i "s|/var/log/messages|/var/log/*.log|g" /etc/promtail/config.yml
+
+  # Menambahkan file reverse proxy untuk Grafana.
+  echo "[+] Konfigurasi reverse proxy Nginx untuk Grafana"
+  # Jika parameter -d dipassing, maka gunakan "www.$DOMAIN:3000".
+  if [ -n "$DOMAIN" ]; then
+    # Buat konfigurasi Nginx untuk domain yang diberikan.
+    sudo cat <<EOL | sudo tee /etc/nginx/sites-available/safetp_grafana.conf > /dev/null
+server {
+  listen 81;
+  server_name $DOMAIN grafana.$DOMAIN;
+  return 301 https://\$host\$request_uri;
+}
+
+server {
+  listen 8443 ssl;
+  server_name www.$DOMAIN;
+
+  ssl_certificate /etc/ssl/certs/safetp_web.crt;
+  ssl_certificate_key /etc/ssl/private/safetp_web.key;
+
+  location / {
+    include proxy_params;
+    proxy_pass http://$DOMAIN:3000/;
+  }
+}
+EOL
+  else
+    sudo cat <<EOL | sudo tee /etc/nginx/sites-available/safetp_grafana.conf > /dev/null
+server {
+  listen 81 default_server;
+  server_name $IP_ADDRESS;
+  return 301 https://\$host\$request_uri;
+}
+
+server {
+  listen 8443 ssl default_server;
+  server_name $IP_ADDRESS;
+
+  ssl_certificate /etc/ssl/certs/safetp_web.crt;
+  ssl_certificate_key /etc/ssl/private/safetp_web.key;
+
+  location / {
+    include proxy_params;
+    proxy_pass http://$IP_ADDRESS:3000/;
+  }
+}
+EOL
+    sleep 0.5 # tunggu 0.5 detik.
+  fi
+
+  # Membuat symlink ke folder 'sites-enabled'.
+  echo "[+] Membuat symlink ke folder 'sites-enabled'"
+  sudo ln -sf /etc/nginx/sites-available/safetp_grafana.conf /etc/nginx/sites-enabled/safetp_grafana.conf
+
+  # Cek konfigurasi nginx dan reload service Nginx.
+  echo "[+] Mengecek konfigurasi Nginx"
+  # Perintah untuk mengecek konfigurasi Nginx dan reload service Nginx.
+  sudo nginx -t &> /dev/null && sudo systemctl reload -q nginx.service
+
+  # Jika konfigurasi Nginx berhasil, maka deploy enable restart dan service nginx.
+  if [ $? -eq 0 ]; then
+    # Menyalakan ulang service Nginx.
+    echo "[+] Menyalakan ulang service Nginx"
+    sudo systemctl restart -q nginx.service
+    sudo systemctl enable -q nginx.service
+    sleep 1 # tunggu 1 detik.
+  else
+    echo "[-] Gagal deploy Grafana Loki!"
+    cleanup_web
+    exit 1
+  fi
+
+  # Restart grafana server.
+  sudo systemctl restart -q grafana-server && sudo systemctl enable -q grafana-server
+
+  # Restart promtail service.
+  sudo systemctl restart -q promtail && sudo systemctl enable -q promtail
+
+  # Cek API promtail.
+  curl -s http://localhost:9080/ready | grep -q "Ready"
+
+  # Restart loki service.
+  sudo systemctl restart -q loki && sudo systemctl enable -q loki
+
+  # Cek API loki.
+  curl -s http://localhost:3100/ready | grep -q "ready"
+  sleep 18 # Tunggu 18 detik sampai service loki dan promtail siap.
+
+  echo "[+] Grafana Loki berhasil di-deploy!"
+  echo "----------------------------------------------------"
+}
+
 # Fungsi untuk menghapus direktori dan file konfigurasi FTP server
 cleanup_ftp() {
   # Clean up semua folder dan file terkait.
@@ -589,7 +714,7 @@ cleanup_dns() {
 cleanup_web() {
   # Clean up semua folder dan file terkait.
   echo "[+] Clean up konfigurasi web server..."
-  sudo rm -rf /var/www/web /etc/nginx/sites-available/safetp_web.conf /etc/nginx/sites-enabled/safetp_web.conf /etc/ssl/certs/safetp_web.crt /etc/ssl/private/safetp_web.key
+  sudo rm -rf /var/www/web /etc/nginx/sites-available/safetp_web.conf /etc/nginx/sites-enabled/safetp_web.conf /etc/ssl/certs/safetp_web.crt /etc/ssl/private/safetp_web.key /etc/nginx/sites-available/safetp_grafana.conf /etc/nginx/sites-enabled/safetp_grafana.conf
 
   # Mengonfigurasi ulang web server.
   deploy_web
@@ -704,14 +829,19 @@ main() {
   # Panggil fungsi 'deploy_web'.
   deploy_web
 
+  # Panggil fungsi 'deploy_grafana_loki'.
+  deploy_grafana_loki
+
   if [ -n "$DOMAIN" ]; then
     echo -e "\e[34m[+] Silahkan tambahkan alamat IP: $IP_ADDRESS ke file '/etc/resolv.conf' ke Linux client, atau jalankan script 'dns_config.sh' di Linux client!\e[1m"
 
     echo -e "\e[32m[+] Silahkan akses FTP server menggunakan domain: ftp.${DOMAIN} di port: ${PORT:-21}\e[1m"
     echo -e "\e[32m[+] Silahkan akses SaFeTP web menggunakan domain: www.${DOMAIN}\e[1m"
+    echo -e "\e[32m[+] Silahkan akses Grafana menggunakan domain dan port: www.${DOMAIN}:8443\e[1m"
   else
     echo -e "\e[32m[+] Silahkan akses FTP server menggunakan alamat IP: $IP_ADDRESS di port: ${PORT:-21}\e[1m"
     echo -e "\e[32m[+] Silahkan akses SaFeTP web menggunakan alamat IP: $IP_ADDRESS\e[1m"
+    echo -e "\e[32m[+] Silahkan akses Grafana menggunakan alamat IP dan port: $IP_ADDRESS:8443\e[1m"
   fi
   echo -e "\e[32m[OK] Instalasi dan konfigurasi SaFeTP selesai!\e[1m"
 }
