@@ -66,7 +66,7 @@ install_dependensi() {
   sudo mkdir -p /etc/apt/keyrings/ && wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
 
   # Tambahkan repository Grafana ke dalam file 'grafana.list'
-  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list > /dev/null
+  echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list > /dev/null
 
   # Update repositori dan install Grafana enterprise server.
   (sudo apt update && sudo apt install -y grafana-enterprise loki promtail) &> /dev/null
@@ -564,7 +564,7 @@ EOL
   # Cek konfigurasi nginx dan reload service Nginx.
   echo "[+] Mengecek konfigurasi Nginx"
   # Perintah untuk mengecek konfigurasi Nginx dan reload service Nginx.
-  sudo nginx -t &> /dev/null && sudo systemctl reload -q nginx.service
+  sudo nginx -t 2> /dev/null
 
   # Jika konfigurasi Nginx berhasil, maka deploy web app.
   if [ $? -eq 0 ]; then
@@ -644,12 +644,12 @@ EOL
 
   # Membuat symlink ke folder 'sites-enabled'.
   echo "[+] Membuat symlink ke folder 'sites-enabled'"
-  sudo ln -sf /etc/nginx/sites-available/safetp_grafana.conf /etc/nginx/sites-enabled/safetp_grafana.conf
+  sudo ln -sf /etc/nginx/sites-available/safetp_grafana.conf /etc/nginx/sites-enabled
 
   # Cek konfigurasi nginx dan reload service Nginx.
   echo "[+] Mengecek konfigurasi Nginx"
   # Perintah untuk mengecek konfigurasi Nginx dan reload service Nginx.
-  sudo nginx -t &> /dev/null && sudo systemctl reload -q nginx.service
+  sudo nginx -t 2> /dev/null
 
   # Jika konfigurasi Nginx berhasil, maka deploy enable restart dan service nginx.
   if [ $? -eq 0 ]; then
@@ -692,7 +692,7 @@ cleanup_ftp() {
 
   # Hapus semua user FTP.
   echo "[+] Menghapus semua user FTP..."
-  grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+  grep -qv '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
     sudo groupdel -f "$username" &> /dev/null
     sudo userdel -r "$username" &> /dev/null
   done

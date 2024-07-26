@@ -37,71 +37,94 @@ if [ "$bind9_service" == "bind9.service" ]; then
   sudo systemctl stop -q vsftpd.service
   sudo systemctl stop -q bind9.service
   sleep 0.5 # Tunggu 0.5 detik.
-  echo "[+] Service vsftpd dan bind9 berhasil dihentikan"
 
   # Setelah itu, hapus program vsftpd dan bind9.
   echo "[+] Clean install paket vsftpd dan bind9"
   (sudo apt autoremove -y vsftpd bind9 && sudo apt purge -y vsftpd bind9) &> /dev/null
-  sudo rm -rf /etc/bind # Hapus folder konfigurasi bind9
-  sudo rm -rf /var/cache/bind # Hapus folder konfigurasi cache bind9
-
+  # Hapus folder konfigurasi bind9
+  sudo rm -rf /etc/bind /var/cache/bind
   sleep 0.5 # Tunggu 0.5 detik.
-  echo "[+] Paket vsftpd dan bind9 berhasil dihapus"
 else
   # Stop service terlebih dahulu
   echo "[+] Menghentikan service vsftpd terlebih dahulu"
   sudo systemctl stop -q vsftpd.service
   sleep 0.5 # Tunggu 0.5 detik.
-  echo "[+] Service vsftpd berhasil dihentikan"
 
   # Setelah itu, hapus program vsftpd dan bind9.
   echo "[+] Menghapus program vsftpd"
   (sudo apt autoremove -y vsftpd && sudo apt purge -y vsftpd) &> /dev/null
   sleep 0.5 # Tunggu 0.5 detik.
-  echo "[+] Program vsftpd berhasil dihapus"
 fi
 
-# Uninstall grafana, loki, dan promtail.
-sudo systemctl stop -q grafana-server.service
-sudo systemctl stop -q promtail.service
-sudo systemctl stop -q loki.service
+# 4. Stop service grafana, loki, promtail, dan nginx.
+echo "[+] Menghentikan service Grafana, loki, promtail, dan nginx"
+sudo systemctl stop -q grafana-server.service && \
+sudo systemctl daemon-reload && \
+sudo systemctl stop -q promtail.service && \
+sudo systemctl stop -q loki.service && \
+sudo systemctl stop -q nginx.service
+sleep 1 # Tunggu 1 detik.
 
-echo "[+] Menghapus program grafana, loki, dan promtail"
+# 5. Uninstall service grafana, loki, dan promtail.
+echo "[+] Menghapus program Grafana, loki, dan promtail"
 (sudo apt autoremove -y grafana loki promtail && sudo apt purge -y grafana loki promtail) &> /dev/null
+sleep 0.5 # Tunggu 0.5 detik.
 
-# 4. Hapus semua user FTP.
+# 6. Hapus file konfigurasi promtail bawaan.
+echo "[+] Menghapus file backup konfigurasi promtail"
+if [ -f /etc/promtail/config.yml.default ]; then
+  sudo rm -f /etc/promtail/config.yml.default
+  sleep 0.5 # Tunggu 0.5 detik.
+else
+  echo "[-] File konfigurasi promtail tidak ditemukan. Skip!"
+fi
+
+# 6. Setelah itu, hapus program nginx.
+echo "[+] Menghapus program nginx"
+(sudo apt autoremove -y nginx && sudo apt purge -y nginx) &> /dev/null
+sleep 0.5 # Tunggu 0.5 detik.
+
+# 7. Menghapus folder instalasi SaFeTP Web.
+echo "[+] Menghapus folder instalasi SaFeTP Web"
+
+if [ -d /var/www/web ]; then
+  sudo rm -rf /var/www/web
+  sleep 0.5 # Tunggu 0.5 detik.
+else
+  echo "[-] Folder '/var/www/web' tidak ditemukan. Skip!"
+fi
+
+# 8. Hapus semua user FTP.
 echo "[+] Menghapus semua user FTP"
-grep -v '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
+grep -qv '^\s*$' /etc/safetp/allowed | sort | uniq | while IFS= read -r username; do
   sudo groupdel -f $username &> /dev/null
   sudo userdel -r $username &> /dev/null
 done
 sleep 0.5 # Tunggu 0.5 detik.
-echo "[+] Semua user FTP berhasil dihapus"
 
-# 5. Hapus semua file yang ada di dalam folder /etc/safetp 
-echo "[+] Menghapus folder 'safetp' dan semua file di dalamnya"
+# 9. Hapus semua file yang ada di dalam folder /etc/safetp 
+echo "[+] Menghapus folder '/etc/safetp' dan semua file di dalamnya"
 sudo rm -rf /etc/safetp
 sleep 0.5 # Tunggu 0.5 detik.
-echo "[+] Folder "safetp" dan semua file di dalamnya berhasil dihapus"
 
-# 6. Hapus file backup "/etc/vsftpd.conf.default"
+# 10. Hapus file backup "/etc/vsftpd.conf.default"
 echo "[+] Menghapus file backup 'vsftpd.conf.default'"
 if [ -f /etc/vsftpd.conf.default ]; then
   sudo rm -f /etc/vsftpd.conf.default
   sleep 0.5 # Tunggu 0.5 detik.
   echo "[+] File backup 'vsftpd.conf.default' berhasil dihapus"
 else
-  echo "[-] File backup 'vsftpd.conf.default' tidak ditemukan"
+  echo "[-] File backup 'vsftpd.conf.default' tidak ditemukan. Skip!"
 fi
 
-# 7. Hapus self-signed SSL certificate.
+# 11. Hapus self-signed SSL certificate.
 echo "[+] Menghapus sertifikat SSL"
 if [ -f /etc/ssl/certs/safetp.crt ]; then
   sudo rm -f /etc/ssl/certs/safetp.crt
   echo "[+] Sertifikat SSL 'safetp.crt' berhasil dihapus"
   sleep 0.5 # Tunggu 0.5 detik.
 else
-  echo "[-] Sertifikat SSL 'safetp.crt' tidak ditemukan"
+  echo "[-] Sertifikat SSL 'safetp.crt' tidak ditemukan. Skip!"
 fi
 
 if [ -f /etc/ssl/private/safetp.key ]; then
@@ -109,7 +132,7 @@ if [ -f /etc/ssl/private/safetp.key ]; then
   echo "[+] Sertifikat SSL 'safetp.key' berhasil dihapus"
   sleep 0.5 # Tunggu 0.5 detik.
 else
-  echo "[-] Sertifikat SSL 'safetp.key' tidak ditemukan"
+  echo "[-] Sertifikat SSL 'safetp.key' tidak ditemukan. Skip!"
 fi
 
 if [ -f /etc/ssl/certs/safetp_web.crt ]; then
@@ -117,7 +140,7 @@ if [ -f /etc/ssl/certs/safetp_web.crt ]; then
   echo "[+] Sertifikat SSL 'safetp_web.crt' berhasil dihapus"
   sleep 0.5 # Tunggu 0.5 detik.
 else
-  echo "[-] Sertifikat SSL 'safetp_web.crt' tidak ditemukan"
+  echo "[-] Sertifikat SSL 'safetp_web.crt' tidak ditemukan. Skip!"
 fi
 
 if [ -f /etc/ssl/private/safetp_web.key ]; then
@@ -125,7 +148,7 @@ if [ -f /etc/ssl/private/safetp_web.key ]; then
   echo "[+] Sertifikat SSL 'safetp_web.key' berhasil dihapus"
   sleep 0.5 # Tunggu 0.5 detik.
 else
-  echo "[-] Sertifikat SSL 'safetp_web.key' tidak ditemukan"
+  echo "[-] Sertifikat SSL 'safetp_web.key' tidak ditemukan. Skip!"
 fi
 
 echo -e "\e[32m[OK] Uninstall program safetp berhasil\e[1m"
